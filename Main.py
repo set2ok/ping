@@ -6,10 +6,14 @@ class Main:
     def __init__(self):
         self.window_size = 500
         self.exit = False
+        self.paddle_height = 50
+        self.outer_bound = [(self.paddle_height,self.paddle_height), (self.window_size - self.paddle_height, self.paddle_height),
+                            (self.window_size - self.paddle_height,self.window_size - self.paddle_height),
+                            (self.paddle_height, self.window_size - self.paddle_height)]
 
     # Will initialise the beginning of the game, create all essential objects etc.
     def setup(self):
-        print()  # Placeholder code
+        self.player = Paddle((50,100), 300 ,25,self.outer_bound)
 
     def main(self):
 
@@ -32,7 +36,7 @@ class Main:
             self.handle_events()
 
             pygame.display.update()
-            dt = clock.tick(120) / 1000
+            dt = clock.tick(1) / 1000
 
     # Runs every frame. What will happen each frame
     def handle_events(self):
@@ -47,7 +51,22 @@ class Main:
     # Will redraw the screen each frame
     def draw(self, canvas):
         canvas.fill((0, 0, 0))
+        p_figure = self.player.figure()
+        print(p_figure)
+
+        pygame.draw.polygon(canvas, (255, 255, 255), p_figure)
+
+
+        for point in self.outer_bound:
+            pygame.draw.circle(canvas, (255, 0, 0), point, 5)  # Red circles for points
+
+        for point in p_figure:
+            pygame.draw.circle(canvas, (0, 255, 0), point, 5)  # Red circles for points
+
+
+
         pygame.display.flip()
+
 
     def react_to_user_input(self, keysPressed):
         if keysPressed[pygame.K_UP]:
