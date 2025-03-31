@@ -4,7 +4,7 @@ from ball import Ball
 class Main:
 
     def __init__(self):
-        self.window_size = 500
+        self.window_size = 800
         self.exit = False
         self.paddle_height = 50
         self.outer_bound = [(self.paddle_height,self.paddle_height), (self.window_size - self.paddle_height, self.paddle_height),
@@ -13,7 +13,7 @@ class Main:
 
     # Will initialise the beginning of the game, create all essential objects etc.
     def setup(self):
-        self.player = Paddle((50,100), 300 ,25,self.outer_bound)
+        self.player = Paddle((50,200), 200 ,50,self.outer_bound, 300)
 
     def main(self):
 
@@ -36,7 +36,7 @@ class Main:
             self.handle_events()
 
             pygame.display.update()
-            dt = clock.tick(1) / 1000
+            self.dt = clock.tick(120) / 1000
 
     # Runs every frame. What will happen each frame
     def handle_events(self):
@@ -75,12 +75,12 @@ class Main:
         if keysPressed[pygame.K_DOWN]:
             print("down")
 
-        if keysPressed[pygame.K_w]:
-            print("w")
+        if keysPressed[pygame.K_a]:
+            self.player.move(-1,self.dt)
 
             # if left arrow key is pressed
-        if keysPressed[pygame.K_s]:
-            print("s")
+        if keysPressed[pygame.K_d]:
+            self.player.move(1,self.dt)
 
 
 
