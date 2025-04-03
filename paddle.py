@@ -12,10 +12,10 @@ class Paddle():
     #create the outer corners of the paddle
     def figure(self):
         figure = [] # corners
-        side = self.side_on_rectangle(self.x,self.y,self.bound)
+        side = self.side_on_rectangle()
         n_side = (side + 1) % 4 # next side/ point,
-        a = 1
-        print(side)
+
+        a = 1 # reverse actions for other pair of side, ex 0,2 and 1,3 defult 0 and 1
         if side >1:
             a = -1
 
@@ -35,7 +35,8 @@ class Paddle():
                     figure.append((self.bound[n_side][0] + a*self.height/2 , self.y - a*self.height/2)) # outer corner
                 figure.append((self.bound[n_side][0] + a*self.height/2 , self.bound[n_side][1] + a*(self.width - abs(self.bound[n_side][0] - self.x) )))
                 figure.append((self.bound[n_side][0] - a*self.height/2 , self.bound[n_side][1] + a*(self.width- abs(self.bound[n_side][0] - self.x) )))
-                figure.append((self.bound[n_side][0] - a*self.height/2 , self.bound[n_side][1] + a*self.height/2)) # inner corner
+                if not abs(self.x - self.bound[n_side][0]) <= self.height / 2:
+                    figure.append((self.bound[n_side][0] - a*self.height/2 , self.bound[n_side][1] + a*self.height/2)) # inner corner
 
             if not abs(self.x - self.bound[n_side][0]) <= self.height / 2:
                 figure.append((self.x, self.y + a*self.height / 2,)) #last corner
@@ -57,30 +58,32 @@ class Paddle():
                     figure.append((self.bound[n_side][0] + a*self.height/2 , self.bound[n_side][1] + a*self.height/2)) # outer corner
                 figure.append((self.bound[n_side][0] - a*(self.width - abs(self.bound[n_side][0] - self.y)), self.bound[n_side][1] + a*self.height/2))
                 figure.append((self.bound[n_side][0] - a*(self.width - abs(self.bound[n_side][0] - self.y)) , self.bound[n_side][1] - a*self.height/2))
-                figure.append((self.bound[n_side][0] - a*self.height/2 , self.bound[n_side][1] - a*self.height/2)) # inner corner
+                if not abs(self.y - self.bound[n_side][0]) <= self.height / 2:
+                    figure.append((self.bound[n_side][0] - a*self.height/2 , self.bound[n_side][1] - a*self.height/2)) # inner corner
+
             if not abs(self.y - self.bound[n_side][0]) <= self.height/2:
                 figure.append((self.x - a*self.height / 2, self.y)) # last corner
         return figure
 
     # find witch side the point is on
-    def side_on_rectangle(self,px , py, rect_points):
+    def side_on_rectangle(self):
         for i in range(4):
-            x1, y1 = rect_points[i]
-            x2, y2 = rect_points[(i + 1) % 4]  # Wrap around to form edges
-            if self.is_point_on_line(px, py, x1, y1, x2, y2):
+            x1, y1 = self.bound[i]
+            x2, y2 = self.bound[(i + 1) % 4]  # Wrap around to form edges
+            if self.is_point_on_line(self.x, self.y, x1, y1, x2, y2):
                 return i
         return False
 
     # check if a point is on a line segment
-    def is_point_on_line(self,px, py, x1, y1, x2, y2):
+    def is_point_on_line(self,x, y, x1, y1, x2, y2):
         # Check collinearity
-        if (py - y1) * (x2 - x1) != (px - x1) * (y2 - y1):
+        if (y - y1) * (x2 - x1) != (x - x1) * (y2 - y1):
             return False
         # Check if point is within segment bounds
-        return min(x1, x2) <= px <= max(x1, x2) and min(y1, y2) <= py <= max(y1, y2)
+        return min(x1, x2) <= x <= max(x1, x2) and min(y1, y2) <= y <= max(y1, y2)
 
     def move(self,direction,dt):
-        side = self.side_on_rectangle(self.x, self.y, self.bound)
+        side = self.side_on_rectangle()
         n_side =  (side + 1) % 4 # next side/ point,
         a = 1
         if side == 2 or side == 3:

@@ -4,7 +4,7 @@ from ball import Ball
 class Main:
 
     def __init__(self):
-        self.window_size = 800
+        self.window_size = 500
         self.exit = False
         self.paddle_height = 50
         self.outer_bound = [(self.paddle_height,self.paddle_height), (self.window_size - self.paddle_height, self.paddle_height),
@@ -13,8 +13,8 @@ class Main:
 
     # Will initialise the beginning of the game, create all essential objects etc.
     def setup(self):
-        self.player = Paddle((50,200), 200 ,50,self.outer_bound, 300)
-
+        self.player = Paddle((50,200), 200 ,25,self.outer_bound, 500)
+        self.ball = Ball((50,300),10, [self.player])
     def main(self):
 
         clock = pygame.time.Clock()
@@ -36,7 +36,7 @@ class Main:
             self.handle_events()
 
             pygame.display.update()
-            self.dt = clock.tick(120) / 1000
+            self.dt = clock.tick(800) / 1000
 
     # Runs every frame. What will happen each frame
     def handle_events(self):
@@ -52,16 +52,16 @@ class Main:
     def draw(self, canvas):
         canvas.fill((0, 0, 0))
         p_figure = self.player.figure()
-        print(p_figure)
-
-        pygame.draw.polygon(canvas, (255, 255, 255), p_figure)
+        print(self.ball.collision(self.player.figure()))
+        pygame.draw.circle(canvas,center=(self.ball.x,self.ball.y),radius=self.ball.radius,color= (255, 0, 0))
+        pygame.draw.polygon(canvas, (255, 255, 255), p_figure )
 
 
         for point in self.outer_bound:
             pygame.draw.circle(canvas, (255, 0, 0), point, 5)  # Red circles for points
 
-        for point in p_figure:
-            pygame.draw.circle(canvas, (0, 255, 0), point, 5)  # Red circles for points
+
+        pygame.draw.circle(canvas, (0, 255, 0), p_figure[1], 5)  # Red circles for points
 
 
 
