@@ -37,6 +37,7 @@ class Main:
 
             pygame.display.update()
             self.dt = clock.tick(800) / 1000
+            self.ball.update(self.dt)
 
     # Runs every frame. What will happen each frame
     def handle_events(self):
@@ -52,7 +53,6 @@ class Main:
     def draw(self, canvas):
         canvas.fill((0, 0, 0))
         p_figure = self.player.figure()
-        print(self.ball.collision(self.player.figure()))
         pygame.draw.circle(canvas,center=(self.ball.x,self.ball.y),radius=self.ball.radius,color= (255, 0, 0))
         pygame.draw.polygon(canvas, (255, 255, 255), p_figure )
 
@@ -60,9 +60,8 @@ class Main:
         for point in self.outer_bound:
             pygame.draw.circle(canvas, (255, 0, 0), point, 5)  # Red circles for points
 
-
-        pygame.draw.circle(canvas, (0, 255, 0), p_figure[1], 5)  # Red circles for points
-
+        for point in p_figure[0:2]:
+            pygame.draw.circle(canvas, (0, 255, 0),point, 5)  # Red circles for points
 
 
         pygame.display.flip()
