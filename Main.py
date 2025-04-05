@@ -60,7 +60,7 @@ class Main:
         for point in self.outer_bound:
             pygame.draw.circle(canvas, (255, 0, 0), point, 5)  # Red circles for points
 
-        for point in p_figure[0:2]:
+        for point in p_figure:
             pygame.draw.circle(canvas, (0, 255, 0),point, 5)  # Red circles for points
 
 
