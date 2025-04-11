@@ -4,42 +4,40 @@ import math
 
 
 class Bot():
-    def __init__(self, player, oponents, balls,powerups,input_shape=(13,7,2), model_path=None):
+    def __init__(self, player, oponents, balls,input_shape=(10,7,2), model_path=None):
         # inputs: player:[[x,y], [width, height], [speed,0], 4*[bound]],
-        # 4 * ball:[[x,y], [cos, sin], [speed, radius]],  3* powerup: [[x,y], [width, height],[power, duration]]
+        # 4 * ball:[[x,y], [cos, sin], [speed, radius]],
         # 5* oponent [[x,y], [width, height], [speed,0], 4*[bound]]
         # -where the opondent it controls are att fist postition
-
-        self.input_shape = input_shape
-        self.model = self.build_model() if model_path is None else tf.keras.models.load_model(model_path)
 
         self.player = player
         self.oponents = oponents
         self.balls = balls
-        self.powerups = powerups
 
         self.max_balls = 4
         self.max_oponents = 5
-        self.max_powerups = 3
+
+        self.input_shape = input_shape
+        self.model = self.build_model() if model_path is None else tf.keras.models.load_model(model_path)
     def build_model(self):
         model = tf.keras.Sequential([
-            tf.keras.layers.Dense(32, activation='relu', input_shape=self.input_shape),
+            tf.keras.layers.Dense(16, activation='relu', input_shape=self.input_shape),
             tf.keras.layers.BatchNormalization(),  # Normalizes activations
             tf.keras.layers.Dropout(0.01),  # Prevents overfitting
-            tf.keras.layers.Dense(32, activation='relu'),
+            tf.keras.layers.Dense(64, activation='relu'),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dropout(0.1),
-            tf.keras.layers.Dense(1, activation='tanh')  # Output range (-1 to 1) for movement
+            tf.keras.layers.Dropout(0.05),
+            tf.keras.layers.Dense(self.max_oponents, activation='tanh')  # Output range (-1 to 1) for movement for every oponent
         ])
         model.compile(optimizer='adam', loss='mse')
         return model
 
-    def create_base_input(self):
-        input_base_data = []
-        input_base_data.append(self.player_input())
-        input_base_data += self.balls_input()
-        input_base_data += self.powerups_inputs()
-        return input_base_data
+    def create_input(self):
+        input_data = []
+        input_data.append(self.player_input())
+        input_data += self.balls_input()
+        input_data += self.oponents_input()
+        return np.array(input_data)
 
     def player_input(self):
         player = []
@@ -57,50 +55,41 @@ class Bot():
             ball_list.append([ball.x,ball.y])
             ball_list.append([math.cos(ball.direction),math.sin(ball.direction)])
             ball_list.append([ball.speed,ball.radius])
-            ball_list += np.zeros(((self.input_shape[1] - 3),self.input_shape[2])) # padding
+            ball_list += np.zeros(((self.input_shape[1] - 3),self.input_shape[2])).tolist() # padding
             balls.append(ball_list)
-        balls += np.zeros(((self.max_balls - len(self.balls)),(self.input_shape[1]),self.input_shape[2])) # padding
+        balls += np.zeros(((self.max_balls - len(self.balls)),(self.input_shape[1]),self.input_shape[2])).tolist() # padding
 
         return balls
 
-    def powerups_inputs(self):
-        # dont have powerups for now
-        powerups = np.zeros((self.max_powerups,self.input_shape[1],self.input_shape[2]))
-        return powerups
 
 
-    def oponents_input(self,oponent):
+    def oponents_input(self):
         oponents = []
-        active_oponent = []
-        active_oponent.append([oponent.x,oponent.y])
-        active_oponent.append([oponent.width,oponent.height])
-        active_oponent.append([oponent.speed,0])
-        for pos in oponent.bound:
-            active_oponent.append([pos[0],pos[1]])
-        oponents.append(active_oponent)
 
-        for paddle in self.oponents:
-            if not paddle == oponent:
-                paddle_list = []
-                paddle_list.append([paddle.x, paddle.y])
-                paddle_list.append([paddle.width, paddle.height])
-                paddle_list.append([paddle.speed, 0])
-                for pos in paddle.bound:
-                    paddle_list.append([pos[0], pos[1]])
-                oponents.append(paddle_list)
-        oponents += np.zeros(((self.max_oponents - len(self.oponents)),self.input_shape[1],self.input_shape[2])) #padding
+        for oponent in self.oponents:
+            oponent_list = []
+            oponent_list.append([oponent.x, oponent.y])
+            oponent_list.append([oponent.width, oponent.height])
+            oponent_list.append([oponent.speed, 0])
+            for pos in oponent.bound:
+                oponent_list.append([pos[0], pos[1]])
+            oponents.append(oponent_list)
+        oponents += np.zeros(((self.max_oponents - len(self.oponents)),self.input_shape[1],self.input_shape[2])).tolist()
+
+        return oponents
 
     def move(self,dt):
-        base_input = self.create_base_input()
-        for oponent in self.oponents:
-            input_data = base_input + self.oponents_input(oponent)
-            action = self.action(input_data)
+        input_data = self.create_input()
+        input_data = np.expand_dims(input_data, axis=0)
+        actions = self.action(input_data)
+        for oponent, action in zip(self.oponents,actions[0:len(self.oponents)]):
             oponent.move(action,dt)
 
     def action(self, input_data):
-        #
-        movement = self.model.predict(input_data, verbose=0)[0][0]
-        return movement  # Can be used to move up/down
+
+        movement = self.model.predict(input_data, verbose=0)[0][0][0]
+        print(movement)
+        return movement
 
     def train(self, x_train, y_train, epochs=10, batch_size=8):
         #train

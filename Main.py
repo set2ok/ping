@@ -1,6 +1,7 @@
 import pygame
 from paddle import Paddle
 from ball import Ball
+from bot import Bot
 class Main:
 
     def __init__(self):
@@ -13,8 +14,10 @@ class Main:
 
     # Will initialise the beginning of the game, create all essential objects etc.
     def setup(self):
-        self.player = Paddle((50,200), 200 ,25,self.outer_bound, 500)
+        self.player = Paddle((50,200), 150 ,25,self.outer_bound, 500)
+        self.paddle = Paddle((200,50),100,25,self.outer_bound,300)
         self.ball = Ball((50,300),10, [self.player])
+        self.bot = Bot(self.player,[self.paddle], [self.ball])
     def main(self):
 
         clock = pygame.time.Clock()
@@ -38,6 +41,7 @@ class Main:
             pygame.display.update()
             self.dt = clock.tick(800) / 1000
             self.ball.update(self.dt)
+            self.bot.move(self.dt)
 
     # Runs every frame. What will happen each frame
     def handle_events(self):
