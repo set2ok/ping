@@ -9,7 +9,14 @@ class Ball():
         self.last_change = -1
         self.collision_list = []
         self.collision_length = 30
-        self.collision_length_factor = 4
+        self.collision_length_factor = 3
+        self.max_angle_adjustment = math.pi / 6
+
+    def clamp(self,value, min_val, max_val):
+        return max(min_val, min(value, max_val))
+
+    def direction_centeration(self):
+        self.direction %= 2 * math.pi
 
     def collision(self, bound): # checks collision, returns -1 for false, 0 for flor bounce, 1 for wall bounce)
         # returns -1, for no collision, 0 för collision on the x axies, 1 for y axies
@@ -61,22 +68,38 @@ class Ball():
 
             for col in colision:
                 current_colision_list = [item[0] for item in self.collision_list if item[1] == paddle]
-                if not (2 or 3 in self.collision_list):
+                if not (2 or 3 in current_colision_list):
                     current_colision_list[len(current_colision_list)*((self.collision_length_factor-1)/self.collision_length_factor):-1]
 
-                if col[0] == -1 or col[0] == self.last_change:
-                    pass
-                elif col[0] in current_colision_list:
-                    print(col[0])
+                if col[0] == -1 or col[0] == self.last_change or col[0] in current_colision_list:
                     pass
 
-                elif col[0] == 0 and not 2 in current_colision_list:
-                    self.direction = - self.direction
-                    self.direction -= ((self.x - ((col[1][0][0] + col[1][1][0])/2))/abs(col[1][0][0] - col[1][1][0]))
+                elif col[0] == 0 and 2 not in current_colision_list:
+                    self.direction = -self.direction
+                    self.direction_centeration()
 
-                elif col[0] == 1 and not 3 in current_colision_list:
-                    self.direction =  math.pi - self.direction
-                    self.direction -= ((self.y - ((col[1][0][1] + col[1][1][1]) / 2)) / abs(col[1][0][1] - col[1][1][1]))
+                    dx = (self.x - ((col[1][0][0] + col[1][1][0]) / 2))
+                    width = abs(col[1][0][0] - col[1][1][0])
+                    offset = self.clamp(dx / (width / 2), -1, 1)
+
+                    if 0 < self.direction < math.pi:
+                        self.direction -= offset * self.max_angle_adjustment
+                    else:
+                        self.direction += offset * self.max_angle_adjustment
+
+
+                elif col[0] == 1 and 3 not in current_colision_list:
+                    self.direction = math.pi - self.direction
+                    self.direction_centeration()
+
+                    dy = (self.y - ((col[1][0][1] + col[1][1][1]) / 2))
+                    height = abs(col[1][0][1] - col[1][1][1])
+                    offset = self.clamp(dy / (height / 2), -1, 1)
+
+                    if math.pi/2< self.direction < 3*math.pi/2:
+                        self.direction -= offset * self.max_angle_adjustment
+                    else:
+                        self.direction += offset * self.max_angle_adjustment
 
                 elif col[0] == 2 and not col[0] == self.last_change:
                     if abs(min(x[0] for x in col[1]) - self.x) < abs(max(x[0] for x in col[1]) - self.x):
@@ -103,5 +126,8 @@ class Ball():
                 if len(self.collision_list) >self.collision_length*self.collision_length_factor:
                     self.collision_list.pop(0)
 
+        self.direction_centeration()
         self.x += math.cos(self.direction)* self.speed * dt
         self.y += math.sin(self.direction) * self.speed * dt
+
+
