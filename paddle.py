@@ -1,13 +1,16 @@
+import random
+
+
 class Paddle():
 
-    def __init__(self,pos, width, height, bound,speed,type = "bot"):
-        self.x,self.y = pos
+    def __init__(self, width, height, bound,speed,type = "bot"):
         self.speed = speed
         self.width = width
         self.height = height
         self.type = type # bot or player
         self.bound = bound # [(x,y) * 4] corners rectangle, 0 top right, 1 top left, 2 bottom right,
                             # 3 bottom left
+        self.spawn()# creates cordinates
 
     #create the outer corners of the paddle
     def figure(self):
@@ -63,6 +66,7 @@ class Paddle():
 
             if not abs(self.y - self.bound[n_side][0]) <= self.height/2:
                 figure.append((self.x - a*self.height / 2, self.y)) # last corner
+
         return figure
 
     # find witch side the point is on
@@ -111,3 +115,14 @@ class Paddle():
                     self.x = self.bound[n_side][0] - a*abs(self.bound[n_side][0] - (self.x + dist))
             else:
                 self.y += dist
+
+    def spawn(self):
+        side = random.randint(0,3)
+        n_side = (side + 1) % 4
+        if side == 0 or 2:
+            self.y = self.bound[side][1]
+            self.x = random.randint(min(self.bound[side][0],self.bound[n_side][0]),max(self.bound[side][0],self.bound[n_side][0]))
+        else:
+            self.x = self.bound[side][0]
+            self.y = random.randint(min(self.bound[side][1], self.bound[n_side][1]),
+                                    max(self.bound[side][1], self.bound[n_side][1]))

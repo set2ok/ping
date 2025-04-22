@@ -8,8 +8,8 @@ class Ball():
         self.paddles = paddles
         self.last_change = -1
         self.collision_list = []
-        self.collision_length = 30
-        self.collision_length_factor = 3
+        self.collision_length = 100
+        self.collision_length_factor = 4
         self.max_angle_adjustment = math.pi / 6
 
     def clamp(self,value, min_val, max_val):
@@ -24,9 +24,9 @@ class Ball():
             # check if inside bound
             if (max(x[0] for x in bound) >= self.x - self.radius and self.x + self.radius >= min(x[0] for x in bound)
             and max(y[1] for y in bound) >= self.y - self.radius and self.y + self.radius >= min(y[1] for y in bound)):
-                if bound[0][0] == bound[-1][0] and (max(y[1] for y in bound) >= self.y - self.radius/2 and self.y + self.radius/2 >= min(y[1] for y in bound)): # edge case x axies
+                if bound[0][0] == bound[-1][0] and (max(y[1] for y in bound) >= self.y  >= min(y[1] for y in bound)): # edge case x axies
                     return [2, bound]
-                elif bound[0][1] == bound[-1][1] and (max(x[0] for x in bound) >= self.x - self.radius/2 and self.x + self.radius/2 >= min(x[0] for x in bound)): #edge case y axies
+                elif bound[0][1] == bound[-1][1] and (max(x[0] for x in bound) >= self.x >= min(x[0] for x in bound)): #edge case y axies
                     return [3, bound]
                 elif bound[0][0] == bound[-1][0]:
                     return [0,bound]
@@ -67,11 +67,11 @@ class Ball():
 
 
             for col in colision:
-                current_colision_list = [item[0] for item in self.collision_list if item[1] == paddle]
+                current_colision_list = [item for item in self.collision_list]
                 if not (2 or 3 in current_colision_list):
                     current_colision_list[len(current_colision_list)*((self.collision_length_factor-1)/self.collision_length_factor):-1]
 
-                if col[0] == -1 or col[0] == self.last_change or col[0] in current_colision_list:
+                if col[0] == -1  or col[0] in current_colision_list:
                     pass
 
                 elif col[0] == 0 and 2 not in current_colision_list:
@@ -101,28 +101,28 @@ class Ball():
                     else:
                         self.direction += offset * self.max_angle_adjustment
 
-                elif col[0] == 2 and not col[0] == self.last_change:
+                elif col[0] == 2 :
                     if abs(min(x[0] for x in col[1]) - self.x) < abs(max(x[0] for x in col[1]) - self.x):
                         self.x = min(x[0] for x in col[1]) - self.radius
-                        if math.sin(self.direction) >0:
+                        if math.cos(self.direction) >0:
                             self.direction = math.pi - self.direction
                     else:
                         self.x = max(x[0] for x in col[1]) + self.radius
-                        if math.sin(self.direction) < 0:
+                        if math.cos(self.direction) < 0:
                             self.direction = math.pi - self.direction
 
 
-                elif col[0] == 3 and not col[0] == self.last_change:
+                elif col[0] == 3 :
                     if abs(min(y[1] for y in col[1]) - self.y) < abs(max(y[1] for y in col[1]) - self.y):
                         self.y = min(y[1] for y in col[1]) - self.radius
-                        if math.cos(self.direction) <0:
+                        if math.sin(self.direction) <0:
                             self.direction = - self.direction
                     else:
                         self.y = max(y[1] for y in col[1]) + self.radius
-                        if math.cos(self.direction) >0:
+                        if math.sin(self.direction) >0:
                             self.direction = - self.direction
 
-                self.collision_list.append([col[0],paddle])
+                self.collision_list.append(col[0])
                 if len(self.collision_list) >self.collision_length*self.collision_length_factor:
                     self.collision_list.pop(0)
 

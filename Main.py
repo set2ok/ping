@@ -1,23 +1,34 @@
 import pygame
+from tensorflow.python.ops.gen_control_flow_ops import loop_cond
+
 from paddle import Paddle
 from ball import Ball
 from bot import Bot
+from datetime import datetime
+
 class Main:
 
     def __init__(self):
         self.window_size = 500
         self.exit = False
-        self.paddle_height = 50
-        self.outer_bound = [(self.paddle_height,self.paddle_height), (self.window_size - self.paddle_height, self.paddle_height),
-                            (self.window_size - self.paddle_height,self.window_size - self.paddle_height),
-                            (self.paddle_height, self.window_size - self.paddle_height)]
+        self.paddle_height = 10
+        self.outer_bound = [(self.paddle_height/2,self.paddle_height/2), (self.window_size - self.paddle_height/2, self.paddle_height/2),
+                            (self.window_size - self.paddle_height/2,self.window_size - self.paddle_height/2),
+                            (self.paddle_height/2, self.window_size - self.paddle_height/2)]
+        self.outer_bound = [(int(bound[0]),bound[1]) for bound in self.outer_bound]
+
+        self.inner_bound = [(200,200),(300,200),(300,300),(200,300)]
 
     # Will initialise the beginning of the game, create all essential objects etc.
     def setup(self):
-        self.player = Paddle((50,200), 150 ,25,self.outer_bound, 500)
-        self.paddle = Paddle((200,50),100,25,self.outer_bound,300)
-        self.ball = Ball((50,300),10, [self.player])
-        self.bot = Bot(self.player,[self.paddle], [self.ball])
+        self.player = Paddle( 80 ,self.paddle_height,self.inner_bound, 350, type="player")
+        self.paddle0 = Paddle(100,self.paddle_height,self.outer_bound,450)
+        self.paddle1 = Paddle( 100, self.paddle_height, self.outer_bound, 450)
+        self.paddle2 = Paddle( 100, self.paddle_height, self.outer_bound, 450)
+        self.paddle3 = Paddle(100, self.paddle_height, self.outer_bound, 450)
+        self.padels = [self.player,self.paddle0,self.paddle1,self.paddle2,self.paddle3]
+        self.ball = Ball((50,300),10, self.padels)
+        self.bot = Bot(self.player,self.padels[1:], [self.ball])
     def main(self):
 
         clock = pygame.time.Clock()
@@ -31,15 +42,25 @@ class Main:
 
         # SETUP GAME OBJECTS
         self.setup()
-
+        count = 0
+        start_time = datetime.now()
         # GAME LOOP
+        loop_count = 0
         while not self.exit:
+            loop_count += 1
+            count += 1
+            time = datetime.now()
+            dif_time = (time-start_time).total_seconds()
+            if dif_time >= 1.0:
+                print(count/dif_time)
+                count = 0
+                start_time = time
             self.draw(canvas)
 
             self.handle_events()
 
             pygame.display.update()
-            self.dt = clock.tick(800) / 1000
+            self.dt = clock.tick(99999) / 1000
             self.ball.update(self.dt)
             self.bot.move(self.dt)
 
@@ -56,16 +77,18 @@ class Main:
     # Will redraw the screen each frame
     def draw(self, canvas):
         canvas.fill((0, 0, 0))
-        p_figure = self.player.figure()
         pygame.draw.circle(canvas,center=(self.ball.x,self.ball.y),radius=self.ball.radius,color= (255, 0, 0))
-        pygame.draw.polygon(canvas, (255, 255, 255), p_figure )
+        pygame.draw.polygon(canvas, (255, 255, 255),self.player.figure())
 
+        for paddle in self.padels:
+            if paddle.type == "bot":
+                pygame.draw.polygon(canvas, (0, 0, 255), paddle.figure())
+            else:
+                pygame.draw.polygon(canvas, (255, 255, 255), paddle.figure())
 
-        for point in self.outer_bound:
+        for point in self.inner_bound:
             pygame.draw.circle(canvas, (255, 0, 0), point, 5)  # Red circles for points
 
-        for point in p_figure:
-            pygame.draw.circle(canvas, (0, 255, 0),point, 5)  # Red circles for points
 
 
         pygame.display.flip()
