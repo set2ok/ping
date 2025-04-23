@@ -1,10 +1,13 @@
 import math
+import random
+
+
 class Ball():
-    def __init__(self,pos,radius,paddles, speed = 200, direction = -math.pi/3):
-        self.x, self.y = pos
+    def __init__(self,outer_bound,inner_bound,radius,paddles, speed = 200, direction = -math.pi/3):
         self.radius = radius
+        self.spawn(outer_bound, inner_bound)
         self.speed = speed
-        self.direction = direction
+        self.start_direction(inner_bound)
         self.paddles = paddles
         self.last_change = -1
         self.collision_list = []
@@ -18,7 +21,7 @@ class Ball():
     def direction_centeration(self):
         self.direction %= 2 * math.pi
 
-    def collision(self, bound): # checks collision, returns -1 for false, 0 for flor bounce, 1 for wall bounce)
+    def check_collision(self, bound): # checks collision, returns -1 for false, 0 for flor bounce, 1 for wall bounce)
         # returns -1, for no collision, 0 för collision on the x axies, 1 for y axies
         if len(bound) ==4: # when bounds is 4
             # check if inside bound
@@ -42,7 +45,7 @@ class Ball():
                 floor_bound.append(middel_point)
                 floor_bound.append(bound[-1])
                 wall_bound = [middel_point,bound[2], bound[3],bound[-2]]
-                return [self.collision(floor_bound), self.collision(wall_bound)]
+                return [self.check_collision(floor_bound), self.check_collision(wall_bound)]
 
             else:
                 wall_bound = [bound[0],bound[1]]
@@ -50,15 +53,12 @@ class Ball():
                 wall_bound.append(middle_point)
                 wall_bound.append(bound[-1])
                 floor_bound = [middle_point,bound[2],bound[3],bound[-2]]
-                return [self.collision(wall_bound),self.collision(floor_bound)]
+                return [self.check_collision(wall_bound),self.check_collision(floor_bound)]
 
-
-
-
-    def update(self, dt):
+    def collision(self):
         for paddle in self.paddles:
             bounds = paddle.figure()
-            colision = self.collision(bounds)
+            colision = self.check_collision(bounds)
             if len(colision) == 1:
                 colision = [colision]
             elif len(colision) == 2:
@@ -126,8 +126,34 @@ class Ball():
                 if len(self.collision_list) >self.collision_length*self.collision_length_factor:
                     self.collision_list.pop(0)
 
+
+    def update(self, dt):
+        self.collision()
+
         self.direction_centeration()
         self.x += math.cos(self.direction)* self.speed * dt
         self.y += math.sin(self.direction) * self.speed * dt
 
+    def spawn(self, outer_bound, inner_bound):
 
+        # cordinates
+        self.x = random.uniform(outer_bound[0][0] + 20, outer_bound[1][0] -20)
+        if inner_bound[0][0] - self.radius < self.x  < inner_bound[1][0] + self.radius:
+            range = random.choice([(outer_bound[0][1] + 20,inner_bound[0][1] - 20),(inner_bound[2][1] + 20,outer_bound[2][1] - 20)])
+            self.y = random.uniform(range[0],range[1])
+        else:
+            self.y = random.uniform(outer_bound[0][1],outer_bound[3][1])
+
+
+    def start_direction(self, bound):
+        center = self.rectangle_center(bound)
+        dx = center[0] - self.x
+        dy = center[1] - self.y
+        self.direction = math.atan2(dy, dx)
+
+    def rectangle_center(self,corners):
+        x_vals = [p[0] for p in corners]
+        y_vals = [p[1] for p in corners]
+        center_x = sum(x_vals) / 4
+        center_y = sum(y_vals) / 4
+        return center_x, center_y

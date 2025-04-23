@@ -27,7 +27,7 @@ class Main:
         self.paddle2 = Paddle( 100, self.paddle_height, self.outer_bound, 450)
         self.paddle3 = Paddle(100, self.paddle_height, self.outer_bound, 450)
         self.padels = [self.player,self.paddle0,self.paddle1,self.paddle2,self.paddle3]
-        self.ball = Ball((50,300),10, self.padels)
+        self.ball = Ball(self.outer_bound,self.inner_bound,10, self.padels)
         self.bot = Bot(self.player,self.padels[1:], [self.ball])
     def main(self):
 

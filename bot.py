@@ -19,7 +19,8 @@ class Bot():
         self.how_often = 10
         self.call_count = 0
         self.last_move = None
-        self.past_states= []
+        self.past_states = []
+        self.save_lenght = 100
 
         self.max_balls = 4
         self.max_oponents = 5
@@ -84,11 +85,11 @@ class Bot():
             input_data = self.create_input()
             input_data = np.expand_dims(input_data, axis=0)
             actions = self.action(input_data)
-            self.last_move = actions
+            self.save_states(input_data,actions)
             for oponent, action in zip(self.oponents,actions[0:len(self.oponents)]):
                 oponent.move(float(action),dt)
         else:
-            for oponent, action in zip(self.oponents,self.last_move[0:len(self.oponents)]):
+            for oponent, action in zip(self.oponents,self.past_states[-1][1][0:len(self.oponents)]):
                 oponent.move(float(action),dt)
         self.call_count += 1
 
@@ -96,9 +97,15 @@ class Bot():
 
         return self.model.predict(input_data, verbose=0)[0]
 
+    def save_states(self,input,output):
+        self.past_states.append([input,output])
+        if len(self.past_states) >= self.save_lenght:
+            self.past_states.pop(0)
+
     def train(self, x_train, y_train, epochs=10, batch_size=8):
         #train
         self.model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1)
+
 
     def save_model(self, path):
         #save module
