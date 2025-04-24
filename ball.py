@@ -5,9 +5,10 @@ import random
 class Ball():
     def __init__(self,outer_bound,inner_bound,radius,paddles, speed = 200, direction = -math.pi/3):
         self.radius = radius
-        self.spawn(outer_bound, inner_bound)
+        self.outer_bound = outer_bound
+        self.inner_bound = inner_bound
+        self.spawn()
         self.speed = speed
-        self.start_direction(inner_bound)
         self.paddles = paddles
         self.last_change = -1
         self.collision_list = []
@@ -55,7 +56,7 @@ class Ball():
                 floor_bound = [middle_point,bound[2],bound[3],bound[-2]]
                 return [self.check_collision(wall_bound),self.check_collision(floor_bound)]
 
-    def collision(self):
+    def collision(self,bot):
         for paddle in self.paddles:
             bounds = paddle.figure()
             colision = self.check_collision(bounds)
@@ -70,7 +71,8 @@ class Ball():
                 current_colision_list = [item for item in self.collision_list]
                 if not (2 or 3 in current_colision_list):
                     current_colision_list[len(current_colision_list)*((self.collision_length_factor-1)/self.collision_length_factor):-1]
-
+                if not col[0] == -1 and not col[0] in current_colision_list and paddle.type == "bot":
+                    bot.active_training()
                 if col[0] == -1  or col[0] in current_colision_list:
                     pass
 
@@ -127,26 +129,32 @@ class Ball():
                     self.collision_list.pop(0)
 
 
-    def update(self, dt):
-        self.collision()
+    def update(self, dt, bot):
+        self.collision(bot)
 
         self.direction_centeration()
         self.x += math.cos(self.direction)* self.speed * dt
         self.y += math.sin(self.direction) * self.speed * dt
 
-    def spawn(self, outer_bound, inner_bound):
+        if (self.outer_bound[3][1] <self.y or self.y < 0 or self.outer_bound[1][0] <self.x
+            or self.x < 0):
+            self.spawn()
+    def spawn(self):
 
         # cordinates
-        self.x = random.uniform(outer_bound[0][0] + 20, outer_bound[1][0] -20)
-        if inner_bound[0][0] - self.radius < self.x  < inner_bound[1][0] + self.radius:
-            range = random.choice([(outer_bound[0][1] + 20,inner_bound[0][1] - 20),(inner_bound[2][1] + 20,outer_bound[2][1] - 20)])
+        self.x = random.uniform(self.outer_bound[0][0] + self.radius * 2, self.outer_bound[1][0] -self.radius * 2)
+        if self.inner_bound[0][0] - self.radius < self.x  < self.inner_bound[1][0] + self.radius:
+            range = random.choice([(self.outer_bound[0][1] + self.radius * 2,self.inner_bound[0][1] - self.radius * 2),
+                                   (self.inner_bound[2][1] + self.radius * 2,self.outer_bound[2][1] - self.radius * 2)])
             self.y = random.uniform(range[0],range[1])
         else:
-            self.y = random.uniform(outer_bound[0][1],outer_bound[3][1])
+            self.y = random.uniform(self.outer_bound[0][1] + self.radius * 2,self.outer_bound[3][1] - self.radius * 2)
+
+        self.start_direction()
 
 
-    def start_direction(self, bound):
-        center = self.rectangle_center(bound)
+    def start_direction(self):
+        center = self.rectangle_center(self.inner_bound)
         dx = center[0] - self.x
         dy = center[1] - self.y
         self.direction = math.atan2(dy, dx)

@@ -121,8 +121,9 @@ class Paddle():
         n_side = (side + 1) % 4
         if side == 0 or 2:
             self.y = self.bound[side][1]
-            self.x = random.randint(min(self.bound[side][0],self.bound[n_side][0]),max(self.bound[side][0],self.bound[n_side][0]))
+            self.x = random.uniform(min(self.bound[side][0],self.bound[n_side][0]) + self.height ,
+                                    max(self.bound[side][0],self.bound[n_side][0]) - self.height)
         else:
             self.x = self.bound[side][0]
-            self.y = random.randint(min(self.bound[side][1], self.bound[n_side][1]),
-                                    max(self.bound[side][1], self.bound[n_side][1]))
+            self.y = random.randint(min(self.bound[side][1], self.bound[n_side][1]) + self.height,
+                                    max(self.bound[side][1], self.bound[n_side][1]) - self.height)

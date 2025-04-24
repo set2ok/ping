@@ -61,7 +61,7 @@ class Main:
 
             pygame.display.update()
             self.dt = clock.tick(99999) / 1000
-            self.ball.update(self.dt)
+            self.ball.update(self.dt, self.bot)
             self.bot.move(self.dt)
 
     # Runs every frame. What will happen each frame
@@ -107,6 +107,10 @@ class Main:
             # if left arrow key is pressed
         if keysPressed[pygame.K_d]:
             self.player.move(1,self.dt)
+
+        if keysPressed[pygame.K_p]: # save module
+            self.bot.save_model("module_v1.h5")
+
 
 
 

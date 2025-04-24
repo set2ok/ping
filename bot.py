@@ -1,51 +1,59 @@
 import tensorflow as tf
 import numpy as np
 import math
+import threading
 
 from pygame.midi import Input
 
 
 class Bot():
-    def __init__(self, player, oponents, balls,input_shape=(102,), model_path=None):
-        # inputs: player:[[x,y], [width, height], [speed], 4*[bound]]:13
-        # 4 * ball:[[x,y], [cos, sin], [speed, radius]]: 4 * 6
-        # 5* oponent [[x,y], [width, height], [speed], 4*[bound]] 5* 13
+    def __init__(self, player, oponents, balls,input_shape=(67,), model_path=None):
+        # inputs: dt, how_often
+        # player:[[x,y], [width, height], [speed], ]: 5
+        # 4 * ball:[[x,y], [cos, sin], [speed, radius]]: 5 * 6
+        # 5* oponent [[x,y], [width, height], [speed]] 6 * 5
         # -where the opondent it controls are att fist postition
 
         self.player = player
         self.oponents = oponents
         self.balls = balls
 
-        self.how_often = 10
+        self.how_often = 8
         self.call_count = 0
         self.last_move = None
         self.past_states = []
-        self.save_lenght = 100
+        self.save_lenght = 300
 
-        self.max_balls = 4
-        self.max_oponents = 5
+        self.max_balls = 5
+        self.max_oponents = 6
 
         self.input_shape = input_shape
-        self.model = self.build_model() if model_path is None else tf.keras.models.load_model(model_path)
+
+        self.model_pred = self.build_model() if model_path is None else tf.keras.models.load_model(model_path)
+        self.model_train = self.build_model() if model_path is None else tf.keras.models.load_model(model_path)
+        self.model_train.set_weights(self.model_pred.get_weights())
     def build_model(self):
-        optimizer = tf.keras.optimizers.Adam(learning_rate=0.05)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=0.01, clipnorm=1.0)
 
         model = tf.keras.Sequential([
             tf.keras.Input(shape=self.input_shape),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dense(16, activation = "relu"),
+            tf.keras.layers.Dense(32, activation = "relu"),
             tf.keras.layers.BatchNormalization(),  # Normalizes activations
-            tf.keras.layers.Dropout(1/16),  # Prevents overfitting
+            tf.keras.layers.Dropout(6/32),  # Prevents overfitting
+            tf.keras.layers.Dense(64, activation='relu'),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dropout(12/64),
             tf.keras.layers.Dense(32, activation='relu'),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dropout(3/32),
+            tf.keras.layers.Dropout(6/ 32),
             tf.keras.layers.Dense(self.max_oponents, activation='tanh')  # Output range (-1 to 1) for movement for every oponent
         ])
         model.compile(optimizer=optimizer, loss='mse')
         return model
 
-    def create_input(self):
-        input_data = []
+    def create_input(self,dt):
+        input_data = [dt,self.how_often]
         input_data += self.player_input()
         input_data += self.balls_input()
         input_data += self.oponents_input()
@@ -53,8 +61,6 @@ class Bot():
 
     def player_input(self):
         player = [self.player.x,self.player.y,self.player.width,self.player.height,self.player.speed]
-        for pos in self.player.bound:
-            player += [pos[0],pos[1]]
         return player
 
     def balls_input(self):
@@ -66,23 +72,18 @@ class Bot():
 
         return balls
 
-
-
     def oponents_input(self):
-        oponents = []
+        oponents_list = []
 
         for oponent in self.oponents:
-            oponent_list = [oponent.x, oponent.y,oponent.width, oponent.height, oponent.speed]
-            for pos in oponent.bound:
-                oponent_list +=[pos[0], pos[1]]
-            oponents += oponent_list
-        oponents += np.zeros(((self.max_oponents - len(self.oponents))*13)).tolist()
+            oponents_list += [oponent.x, oponent.y,oponent.width, oponent.height, oponent.speed]
+        oponents_list += np.zeros(((self.max_oponents - len(self.oponents))*5)).tolist()
 
-        return oponents
+        return oponents_list
 
     def move(self,dt):
         if self.call_count % self.how_often == 0 or self.call_count == 0:
-            input_data = self.create_input()
+            input_data = self.create_input(dt)
             input_data = np.expand_dims(input_data, axis=0)
             actions = self.action(input_data)
             self.save_states(input_data,actions)
@@ -94,18 +95,39 @@ class Bot():
         self.call_count += 1
 
     def action(self, input_data):
-
-        return self.model.predict(input_data, verbose=0)[0]
+        return self.model_pred.predict(input_data, verbose=0)[0]
 
     def save_states(self,input,output):
-        self.past_states.append([input,output])
+        if self.past_states:
+            last_output = self.past_states[-1][1]
+            diff = np.linalg.norm(np.array(output) - np.array(last_output))
+        else:
+            diff = np.inf
+
+        self.past_states.append([input,output,diff])
         if len(self.past_states) >= self.save_lenght:
             self.past_states.pop(0)
 
-    def train(self, x_train, y_train, epochs=10, batch_size=8):
-        #train
-        self.model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, verbose=1)
+    def active_training(self):
+        inputs = np.array([s[0] for s in self.past_states])
+        inputs = np.squeeze(inputs)
 
+        outputs = np.array([s[1] for s in self.past_states])
+
+        weights = np.array([s[2] for s in self.past_states])
+        if not len(weights) == 0:
+            if np.max(weights) == 0:
+                weights = np.ones_like(weights)  # Om alla weights är noll, ge dem en standardvikt.
+            else:
+                weights = weights / (np.max(weights) + 1e-8)
+        if not( len(inputs) == 0 or len(outputs) == 0):
+            thread = threading.Thread(target=self.train, args=(inputs, outputs, weights))
+            thread.start()
+
+    def train(self, inputs, outputs,weights, epochs=10, batch_size=8):
+        #train
+        self.model_train.fit(inputs, outputs, sample_weight=weights, epochs=epochs, verbose=2)
+        self.model_pred.set_weights(self.model_train.get_weights())
 
     def save_model(self, path):
         #save module
