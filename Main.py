@@ -1,5 +1,4 @@
 import pygame
-from tensorflow.python.ops.gen_control_flow_ops import loop_cond
 
 from paddle import Paddle
 from ball import Ball
@@ -60,7 +59,7 @@ class Main:
             self.handle_events()
 
             pygame.display.update()
-            self.dt = clock.tick(99999) / 1000
+            self.dt = clock.tick(120) / 1000
             self.ball.update(self.dt, self.bot)
             self.bot.move(self.dt)
 

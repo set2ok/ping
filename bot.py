@@ -3,8 +3,6 @@ import numpy as np
 import math
 import threading
 
-from pygame.midi import Input
-
 
 class Bot():
     def __init__(self, player, oponents, balls,input_shape=(67,), model_path=None):
@@ -29,24 +27,24 @@ class Bot():
 
         self.input_shape = input_shape
 
-        self.model_pred = self.build_model() if model_path is None else tf.keras.models.load_model(model_path)
-        self.model_train = self.build_model() if model_path is None else tf.keras.models.load_model(model_path)
+        self.model_pred = self.build_model(1/4) if model_path is None else tf.keras.models.load_model(model_path)
+        self.model_train = self.build_model(1/10) if model_path is None else tf.keras.models.load_model(model_path)
         self.model_train.set_weights(self.model_pred.get_weights())
-    def build_model(self):
-        optimizer = tf.keras.optimizers.Adam(learning_rate=0.01, clipnorm=1.0)
+    def build_model(self,drop_rate):
+        optimizer = tf.keras.optimizers.Adam(learning_rate=0.001, clipnorm=1.0)
 
         model = tf.keras.Sequential([
             tf.keras.Input(shape=self.input_shape),
             tf.keras.layers.BatchNormalization(),
             tf.keras.layers.Dense(32, activation = "relu"),
             tf.keras.layers.BatchNormalization(),  # Normalizes activations
-            tf.keras.layers.Dropout(6/32),  # Prevents overfitting
+            tf.keras.layers.Dropout(drop_rate/2),  # Prevents overfitting
             tf.keras.layers.Dense(64, activation='relu'),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dropout(12/64),
+            tf.keras.layers.Dropout(drop_rate),
             tf.keras.layers.Dense(32, activation='relu'),
-            tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dropout(6/ 32),
+            #tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dropout(drop_rate),
             tf.keras.layers.Dense(self.max_oponents, activation='tanh')  # Output range (-1 to 1) for movement for every oponent
         ])
         model.compile(optimizer=optimizer, loss='mse')
@@ -80,6 +78,18 @@ class Bot():
         oponents_list += np.zeros(((self.max_oponents - len(self.oponents))*5)).tolist()
 
         return oponents_list
+
+    def normalize_weights(self,weights):
+        weights = np.abs(weights)  # Absolutvärde
+        weights = np.nan_to_num(weights, nan=0, posinf=0, neginf=0)  # Hantera NaN eller inf
+
+        max_val = np.max(weights)
+        if max_val > 0:
+            normalized = weights / max_val  # Normalisera
+        else:
+            normalized = np.zeros_like(weights)  # Fallback om max är 0
+
+        return normalized + 1e-2
 
     def move(self,dt):
         if self.call_count % self.how_often == 0 or self.call_count == 0:
@@ -116,11 +126,9 @@ class Bot():
 
         weights = np.array([s[2] for s in self.past_states])
         if not len(weights) == 0:
-            if np.max(weights) == 0:
-                weights = np.ones_like(weights)  # Om alla weights är noll, ge dem en standardvikt.
-            else:
-                weights = weights / (np.max(weights) + 1e-8)
-        if not( len(inputs) == 0 or len(outputs) == 0):
+            weights = self.normalize_weights(weights)
+
+        if not( len(inputs) == 0 or len(outputs) == 0 or len(weights) == 0):
             thread = threading.Thread(target=self.train, args=(inputs, outputs, weights))
             thread.start()
 
@@ -131,4 +139,4 @@ class Bot():
 
     def save_model(self, path):
         #save module
-        self.model.save(path)
+        self.model_train.save(path)
