@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.keras import layers, regularizers
 import numpy as np
 import math
 import threading
@@ -20,30 +21,28 @@ class Bot():
         self.call_count = 0
         self.last_move = None
         self.past_states = []
-        self.save_lenght = 300
+        self.save_lenght = 500
 
         self.max_balls = 5
         self.max_oponents = 6
 
         self.input_shape = input_shape
 
-        self.model_pred = self.build_model(1/4) if model_path is None else tf.keras.models.load_model(model_path)
+        self.model_pred = self.build_model(1/3) if model_path is None else tf.keras.models.load_model(model_path)
         self.model_train = self.build_model(1/10) if model_path is None else tf.keras.models.load_model(model_path)
         self.model_train.set_weights(self.model_pred.get_weights())
     def build_model(self,drop_rate):
-        optimizer = tf.keras.optimizers.Adam(learning_rate=0.001, clipnorm=1.0)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=0.005, clipnorm=1.0)
 
         model = tf.keras.Sequential([
             tf.keras.Input(shape=self.input_shape),
             tf.keras.layers.BatchNormalization(),
-            tf.keras.layers.Dense(32, activation = "relu"),
+            tf.keras.layers.Dense(32, activation = "relu",  kernel_regularizer= regularizers.l2(0.1)),
             tf.keras.layers.BatchNormalization(),  # Normalizes activations
             tf.keras.layers.Dropout(drop_rate/2),  # Prevents overfitting
-            tf.keras.layers.Dense(64, activation='relu'),
-            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dense(64, activation='relu', kernel_regularizer= regularizers.l2(0.1)),
             tf.keras.layers.Dropout(drop_rate),
-            tf.keras.layers.Dense(32, activation='relu'),
-            #tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dense(32, activation='relu', kernel_regularizer= regularizers.l2(0.1)),
             tf.keras.layers.Dropout(drop_rate),
             tf.keras.layers.Dense(self.max_oponents, activation='tanh')  # Output range (-1 to 1) for movement for every oponent
         ])
@@ -108,13 +107,8 @@ class Bot():
         return self.model_pred.predict(input_data, verbose=0)[0]
 
     def save_states(self,input,output):
-        if self.past_states:
-            last_output = self.past_states[-1][1]
-            diff = np.linalg.norm(np.array(output) - np.array(last_output))
-        else:
-            diff = np.inf
 
-        self.past_states.append([input,output,diff])
+        self.past_states.append([input,output])
         if len(self.past_states) >= self.save_lenght:
             self.past_states.pop(0)
 
@@ -124,17 +118,14 @@ class Bot():
 
         outputs = np.array([s[1] for s in self.past_states])
 
-        weights = np.array([s[2] for s in self.past_states])
-        if not len(weights) == 0:
-            weights = self.normalize_weights(weights)
 
-        if not( len(inputs) == 0 or len(outputs) == 0 or len(weights) == 0):
-            thread = threading.Thread(target=self.train, args=(inputs, outputs, weights))
+        if not( len(inputs) == 0 or len(outputs) == 0 ):
+            thread = threading.Thread(target=self.train, args=(inputs, outputs))
             thread.start()
 
-    def train(self, inputs, outputs,weights, epochs=10, batch_size=8):
+    def train(self, inputs, outputs, epochs=6, batch_size=8):
         #train
-        self.model_train.fit(inputs, outputs, sample_weight=weights, epochs=epochs, verbose=2)
+        self.model_train.fit(inputs, outputs, epochs=epochs, verbose=2)
         self.model_pred.set_weights(self.model_train.get_weights())
 
     def save_model(self, path):
