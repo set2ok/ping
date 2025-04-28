@@ -1,6 +1,6 @@
 import math
 import random
-
+import numpy as np
 
 class Ball():
     def __init__(self,outer_bound,inner_bound,radius,paddles, speed = 200, direction = -math.pi/3):
@@ -62,17 +62,19 @@ class Ball():
             colision = self.check_collision(bounds)
             if len(colision) == 1:
                 colision = [colision]
-            elif len(colision) == 2:
-                if len(colision[1]) == 4:
-                    colision = [colision]
+            elif len(colision) == 2 and len(colision[1]):
+                colision = [colision]
 
 
             for col in colision:
                 current_colision_list = [item for item in self.collision_list]
                 if not (2 or 3 in current_colision_list):
                     current_colision_list[len(current_colision_list)*((self.collision_length_factor-1)/self.collision_length_factor):-1]
+
                 if not col[0] == -1 and not col[0] in current_colision_list and paddle.type == "bot":
-                    bot.active_training()
+                    bot.update_for_hit()
+                elif not col[0] == -1 and not col[0] in current_colision_list and paddle.type == "player":
+                    print("hit")
                 if col[0] == -1  or col[0] in current_colision_list:
                     pass
 
@@ -139,6 +141,7 @@ class Ball():
         if (self.outer_bound[3][1] <self.y or self.y < 0 or self.outer_bound[1][0] <self.x
             or self.x < 0):
             self.spawn()
+
     def spawn(self):
 
         # cordinates
@@ -165,3 +168,25 @@ class Ball():
         center_x = sum(x_vals) / 4
         center_y = sum(y_vals) / 4
         return center_x, center_y
+
+    def minimum_distance_to_paddle(self):
+        distances = []
+        for paddle in self.paddles:
+            if paddle.type == "bot":
+                bound = paddle.figure()
+                x_values = [p[0] for p in bound]
+                y_values = [p[1] for p in bound]
+                if max(x_values) < self.x < min(x_values):
+                    distances.append(min([abs(min(y_values) - self.y), abs(max(y_values) - self.y)]) - self.radius)
+                elif max(y_values) < self.y < min(y_values):
+                    distances.append(min([abs(min(x_values) - self.x), abs(max(x_values) - self.x)]) - self.radius)
+                else:
+
+                    point = np.array([self.x,self.y])
+
+                    bounds_points = np.array([bound])
+
+                    distance =  np.linalg.norm(bounds_points - point, axis=1)
+                    distances.append(np.min(distance) - self.radius)
+
+        return abs(min(distances))

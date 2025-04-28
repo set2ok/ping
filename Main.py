@@ -78,7 +78,6 @@ class Main:
         canvas.fill((0, 0, 0))
         pygame.draw.circle(canvas,center=(self.ball.x,self.ball.y),radius=self.ball.radius,color= (255, 0, 0))
         pygame.draw.polygon(canvas, (255, 255, 255),self.player.figure())
-
         for paddle in self.padels:
             if paddle.type == "bot":
                 pygame.draw.polygon(canvas, (0, 0, 255), paddle.figure())
