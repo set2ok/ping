@@ -60,10 +60,14 @@ class Ball():
         for paddle in self.paddles:
             bounds = paddle.figure()
             colision = self.check_collision(bounds)
-            if len(colision) == 1:
+            if len(colision) == 1 or len(colision) == 2 and len(colision[1]) == 4:
                 colision = [colision]
-            elif len(colision) == 2 and len(colision[1]):
-                colision = [colision]
+            elif len(colision) == 2:
+                if len(colision[0]) == 1:
+                    colision[0] = [colision[0]]
+                elif len(colision[1]) == 1:
+                    colision[1] = [colision[1]]
+
 
 
             for col in colision:
@@ -72,9 +76,7 @@ class Ball():
                     current_colision_list[len(current_colision_list)*((self.collision_length_factor-1)/self.collision_length_factor):-1]
 
                 if not col[0] == -1 and not col[0] in current_colision_list and paddle.type == "bot":
-                    bot.update_for_hit()
-                elif not col[0] == -1 and not col[0] in current_colision_list and paddle.type == "player":
-                    print("hit")
+                    bot.adjust_weights_for_result(True)
                 if col[0] == -1  or col[0] in current_colision_list:
                     pass
 
@@ -140,6 +142,7 @@ class Ball():
 
         if (self.outer_bound[3][1] <self.y or self.y < 0 or self.outer_bound[1][0] <self.x
             or self.x < 0):
+            bot.adjust_weights_for_result(False)
             self.spawn()
 
     def spawn(self):

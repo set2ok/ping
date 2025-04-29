@@ -59,7 +59,7 @@ class Main:
             self.handle_events()
 
             pygame.display.update()
-            self.dt = clock.tick(240) / 1000
+            self.dt = clock.tick(999) / 1000
             self.ball.update(self.dt, self.bot)
             self.bot.move(self.dt)
 
