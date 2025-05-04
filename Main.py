@@ -21,13 +21,13 @@ class Main:
     # Will initialise the beginning of the game, create all essential objects etc.
     def setup(self):
         self.player = Paddle( 80 ,self.paddle_height,self.inner_bound, 350, type="player")
-        self.paddle0 = Paddle(100,self.paddle_height,self.outer_bound,450)
-        self.paddle1 = Paddle( 100, self.paddle_height, self.outer_bound, 450)
-        self.paddle2 = Paddle( 100, self.paddle_height, self.outer_bound, 450)
-        self.paddle3 = Paddle(100, self.paddle_height, self.outer_bound, 450)
-        self.padels = [self.player,self.paddle0,self.paddle1,self.paddle2,self.paddle3]
-        self.ball = Ball(self.outer_bound,self.inner_bound,10, self.padels)
-        self.bot = Bot(self.player,self.padels[1:], [self.ball])
+        self.padels = [self.player]
+        for paddle_nr in range(6):
+            self.padels.append(Paddle(100,self.paddle_height,self.outer_bound,450))
+        self.balls = []
+        for balls_nr in range(5):
+            self.balls.append(Ball(self.outer_bound,self.inner_bound,10, self.padels))
+        self.bot = Bot(self.player,self.padels[1:], self.balls)
     def main(self):
 
         clock = pygame.time.Clock()
@@ -60,7 +60,9 @@ class Main:
 
             pygame.display.update()
             self.dt = clock.tick(999) / 1000
-            self.ball.update(self.dt, self.bot)
+            #self.dt = 1/100
+            for ball in self.balls:
+                ball.update(self.dt, self.bot)
             self.bot.move(self.dt)
 
     # Runs every frame. What will happen each frame
@@ -76,16 +78,21 @@ class Main:
     # Will redraw the screen each frame
     def draw(self, canvas):
         canvas.fill((0, 0, 0))
-        pygame.draw.circle(canvas,center=(self.ball.x,self.ball.y),radius=self.ball.radius,color= (255, 0, 0))
-        pygame.draw.polygon(canvas, (255, 255, 255),self.player.figure())
+
         for paddle in self.padels:
+            for point in paddle.figure:
+                pygame.draw.circle(canvas, (255, 0, 255), point, 3)
+                pygame.draw.circle(canvas, (0, 255, 0), (paddle.x,paddle.y), 3)
             if paddle.type == "bot":
-                pygame.draw.polygon(canvas, (0, 0, 255), paddle.figure())
+                pygame.draw.polygon(canvas, (0, 0, 255), paddle.figure)
             else:
-                pygame.draw.polygon(canvas, (255, 255, 255), paddle.figure())
+                pygame.draw.polygon(canvas, (255, 255, 255), paddle.figure)
+
+        for ball in self.balls:
+            pygame.draw.circle(canvas, center=(ball.x, ball.y), radius=ball.radius, color=(255, 0, 0))
 
         for point in self.inner_bound:
-            pygame.draw.circle(canvas, (255, 0, 0), point, 5)  # Red circles for points
+            pygame.draw.circle(canvas, (255, 0, 0), point, 3)  # Red circles for points
 
 
 
@@ -107,7 +114,7 @@ class Main:
             self.player.move(1,self.dt)
 
         if keysPressed[pygame.K_p]: # save module
-            self.bot.save_model("module_v1.h5")
+            self.bot.save_model()
 
 
 

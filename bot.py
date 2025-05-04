@@ -4,14 +4,17 @@ import numpy as np
 import math
 import threading
 
+tf.config.run_functions_eagerly(True)
+tf.data.experimental.enable_debug_mode()
 
 class Bot():
-    def __init__(self, player: list, oponents: list, balls,input_shape=(72,), model_path=None):
-        # inputs: dt, how_often
+    def __init__(self, player: list, oponents: list, balls,input_shape=(72,), model_path="model_v1.keras", learning_rate = 0.005):
+        # inputs: dt, how_often : 2
         # player:[[x,y], [width, height], [speed], ]: 5
         # 5 * ball:[[x,y], [cos, sin], [speed, radius] distance]: 5 * 7
         # 6* oponent [[x,y], [width, height], [speed]] 6 * 5
-        # -where the opondent it controls are att fist postition
+        # -where the opondent it controls are att fist postitionno
+
 
         self.player = player
         self.oponents = oponents
@@ -21,26 +24,32 @@ class Bot():
         self.call_count = 0
         #self.starting_distance = None
         self.past_states = []
-        self.save_lenght = 3000
+        self.save_lenght = 2000
+
+        self.all_states = []
 
         self.max_balls = 5
         self.max_oponents = 6
 
         self.input_shape = input_shape
+        self.learning_rate = learning_rate
 
-        self.model_pred = self.build_model(1/6) if model_path is None else tf.keras.models.load_model(model_path)
-        self.model_train = self.build_model(1/20) if model_path is None else tf.keras.models.load_model(model_path)
+        self.model_pred = self.build_model(1/6) if model_path is None else self.load_model(model_path)
+        self.model_train = self.build_model(1/20) if model_path is None else self.load_model(model_path)
         self.model_train.set_weights(self.model_pred.get_weights())
+
     def build_model(self,drop_rate : float):
-        optimizer = tf.keras.optimizers.Adam(learning_rate=0.0005, clipnorm=1.0)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate, clipnorm=1.5)
 
         model = tf.keras.Sequential([
             tf.keras.Input(shape=self.input_shape),
-            tf.keras.layers.Dense(256, activation = "relu",  kernel_regularizer= regularizers.l2(0.1)),
+            tf.keras.layers.Dense(512, activation = "relu",  kernel_regularizer= regularizers.l2(0.1)),
             tf.keras.layers.Dropout(drop_rate/2),  # Prevents overfitting
-            tf.keras.layers.Dense(128, activation='relu', kernel_regularizer= regularizers.l2(0.1)),
+            tf.keras.layers.Dense(256, activation='relu', kernel_regularizer= regularizers.l2(0.1)),
             tf.keras.layers.Dropout(drop_rate),
-            tf.keras.layers.Dense(128, activation='relu', kernel_regularizer= regularizers.l2(0.1)),
+            tf.keras.layers.Dense(256, activation='relu', kernel_regularizer= regularizers.l2(0.1)),
+            tf.keras.layers.Dropout(drop_rate),
+            tf.keras.layers.Dense(256, activation='relu', kernel_regularizer=regularizers.l2(0.1)),
             tf.keras.layers.Dropout(drop_rate),
             tf.keras.layers.Dense(self.max_oponents, activation='tanh')  # Output range (-1 to 1) for movement for every oponent
         ])
@@ -88,16 +97,16 @@ class Bot():
         else:
             for oponent, action in zip(self.oponents,self.past_states[-1][1][:len(self.oponents)]):
                 oponent.move(float(action),dt)
-        if self.call_count % self.save_lenght == 0 and not self.call_count == 0:
+        if self.call_count % (self.save_lenght/2) == 0 and not self.call_count == 0 and not len(self.past_states) <= self.save_lenght/2:
             self.active_training()
         self.call_count += 1
 
-    def get_shortest_distance(self):
-        return min([ball.minimum_distance_to_paddle() for ball in self.balls])
+    def get_distance_to_balls(self):
+        return [ball.minimum_distance_to_paddle() for ball in self.balls]
 
-    def adjust_weights_for_result(self, hit: bool):
+    def adjust_weights_for_result(self, hit: bool, miss_distance = None):
 
-        n = len(self.past_states)
+        n = len(self.past_states) - 1
         if n < 2:
             return
 
@@ -105,37 +114,54 @@ class Bot():
         if hit:
             for i in range(start, n):
                 progress = (i - start) / (n - start)  # 0 → 1
-                scale = 1.0 + progress * 1.5  # 1.0 → 2.5
+                scale = 1.0 + progress * 2
                 self.past_states[i][2] *= scale
         else:
-            miss_distance = self.get_shortest_distance()
-            penalty_strength = np.clip(miss_distance, 0.1, 3.0)  # undvik överdrift
+            penalty_strength = np.clip(miss_distance, 0.01, 6.0)  # undvik överdrift
 
             for i in range(start, n):
                 progress = (i - start) / (n - start)
                 scale = 1.0 - progress * 0.9  # 1.0 → 0.1
                 penalty = scale / (penalty_strength + 1e-5)  # mindre avstånd → svagare straff
-                self.past_states[i][2] *= penalty
+                self.past_states[i][2] *= penalty**(0.5)
 
     def save_states(self,input,output):
-        distance = self.get_shortest_distance()
-        self.past_states.append([input,output,distance])
+        distances = self.get_distance_to_balls()
+        distance = min(distances)
+        if len(self.balls) > 1:
+            distances.remove(distance)
+            distance = (distance + min(distances))/2
+
+        self.past_states.append([input,output, distance])
         if len(self.past_states) > 1:
             delta = self.past_states[-2][2] - distance
             self.past_states[-2][2] = self.scaled_weight(delta)
         if len(self.past_states) >= self.save_lenght:
             self.past_states.pop(0)
 
-    def scaled_weight(self,delta, base=1.2, max_scale=5.0):
-        # Begränsa delta så inte vikterna exploderar eller kollapsar
-        delta = np.clip(delta, -3, 3)
+    def scaled_weight(self,delta, base=1.2, max_scale=6.0):
         scale = base ** delta  # t.ex. 1.2^delta
-        return np.clip(scale, 0.01, max_scale)
+        return np.clip(scale, 1e-5, max_scale)
 
-    def active_training(self):
+    def normalize_weights(self,weights):
+        return weights / np.max(weights)
+
+    def active_training(self, max = 20, min = 1e-10):
         if len(self.past_states) >2:
-            inputs, outputs, weights = map(np.array, zip(*self.past_states[:-2]))
+            data = self.past_states[:int(self.save_lenght/2)]
+            data.sort(key=lambda x: x[2], reverse=True)
+            data = data[:int(len(data)/3)]
+            inputs, outputs, weights = map(np.array, zip(*data))
             inputs = np.squeeze(inputs)
+
+            avg_wheight = np.average(weights)
+            if avg_wheight >= max:
+                weights = self.normalize_weights(weights) * max
+            elif avg_wheight <= min:
+                weights = self.normalize_weights(weights)
+
+            weights = np.clip(weights,1e-10,20)
+            outputs = np.clip(outputs,-0.9,0.9)
 
 
             if not( len(inputs) == 0 or len(outputs) == 0 ):
@@ -154,11 +180,24 @@ class Bot():
         self.model_train.fit(inputs, outputs,sample_weight= wheights, epochs=epochs, verbose=2)
         self.model_pred.set_weights(self.model_train.get_weights())
 
-    def action(self, input_data):
-        pred = self.model_pred.predict(input_data, verbose=0)[0]
-        noise = np.random.normal(0, 0.2, size=pred.shape)
-        return np.clip(pred + noise, -1.0, 1.0)
+    def action(self, input_data, epsilon=0.1):
+        if np.random.rand() < epsilon:
 
-    def save_model(self, path):
+            return np.random.uniform(-1.0, 1.0, size=self.max_oponents)
+        else:
+
+            pred = self.model_pred.predict(input_data, verbose=0)[0]
+            confidence = np.std(pred)  # hög std = osäkrare modell
+            noise_scale = 0.05 + 0.3 * confidence
+            noise = np.random.normal(0, noise_scale, size=pred.shape)
+            return np.clip(pred + noise, -1.0, 1.0)
+
+    def load_model(self, path : str):
+        model =  tf.keras.models.load_model(path)
+        optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate, clipnorm=1.5)
+        model.compile(optimizer=optimizer, loss=tf.keras.losses.Huber())
+        return model
+
+    def save_model(self, path = "model_v1.keras"):
         #save module
         self.model_train.save(path)

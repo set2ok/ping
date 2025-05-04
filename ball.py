@@ -1,14 +1,16 @@
 import math
 import random
 import numpy as np
+import time
+from datetime import datetime
 
 class Ball():
-    def __init__(self,outer_bound,inner_bound,radius,paddles, speed = 200, direction = -math.pi/3):
+    def __init__(self,outer_bound,inner_bound,radius,paddles, speed = 100, direction = -math.pi/3):
         self.radius = radius
         self.outer_bound = outer_bound
         self.inner_bound = inner_bound
         self.spawn()
-        self.speed = speed
+        self.speed_base = speed
         self.paddles = paddles
         self.last_change = -1
         self.collision_list = []
@@ -26,11 +28,13 @@ class Ball():
         # returns -1, for no collision, 0 för collision on the x axies, 1 for y axies
         if len(bound) ==4: # when bounds is 4
             # check if inside bound
-            if (max(x[0] for x in bound) >= self.x - self.radius and self.x + self.radius >= min(x[0] for x in bound)
-            and max(y[1] for y in bound) >= self.y - self.radius and self.y + self.radius >= min(y[1] for y in bound)):
-                if bound[0][0] == bound[-1][0] and (max(y[1] for y in bound) >= self.y  >= min(y[1] for y in bound)): # edge case x axies
+            max_x, min_x = max(x[0] for x in bound), min(x[0] for x in bound)
+            max_y, min_y = max(y[1] for y in bound), min(y[1] for y in bound)
+            if (max_x >= self.x - self.radius and self.x + self.radius >= min_x
+            and max_y >= self.y - self.radius and self.y + self.radius >= min_y):
+                if bound[0][0] == bound[-1][0] and (max_y -(max_y-min_y)/3 >= self.y  >= min_y + (max_y-min_y)/3): # edge case x axies
                     return [2, bound]
-                elif bound[0][1] == bound[-1][1] and (max(x[0] for x in bound) >= self.x >= min(x[0] for x in bound)): #edge case y axies
+                elif bound[0][1] == bound[-1][1] and (max_x  -(max_x-min_x)/3 >= self.x >= min_x + (max_x-min_x)/3): #edge case y axies
                     return [3, bound]
                 elif bound[0][0] == bound[-1][0]:
                     return [0,bound]
@@ -58,7 +62,7 @@ class Ball():
 
     def collision(self,bot):
         for paddle in self.paddles:
-            bounds = paddle.figure()
+            bounds = paddle.figure
             colision = self.check_collision(bounds)
             if len(colision) == 1 or len(colision) == 2 and len(colision[1]) == 4:
                 colision = [colision]
@@ -137,12 +141,19 @@ class Ball():
         self.collision(bot)
 
         self.direction_centeration()
+
+        self.speed = self.speed_base
+        if not self.grace_period == False:
+            self.speed *= 0.2
+            if (datetime.now() - self.grace_period).total_seconds() >= 3:
+                self.grace_period = False
+
         self.x += math.cos(self.direction)* self.speed * dt
         self.y += math.sin(self.direction) * self.speed * dt
 
         if (self.outer_bound[3][1] <self.y or self.y < 0 or self.outer_bound[1][0] <self.x
             or self.x < 0):
-            bot.adjust_weights_for_result(False)
+            bot.adjust_weights_for_result(False, self.minimum_distance_to_paddle())
             self.spawn()
 
     def spawn(self):
@@ -157,6 +168,7 @@ class Ball():
             self.y = random.uniform(self.outer_bound[0][1] + self.radius * 2,self.outer_bound[3][1] - self.radius * 2)
 
         self.start_direction()
+        self.grace_period = datetime.now()
 
 
     def start_direction(self):
@@ -176,7 +188,7 @@ class Ball():
         distances = []
         for paddle in self.paddles:
             if paddle.type == "bot":
-                bound = paddle.figure()
+                bound = paddle.figure
                 x_values = [p[0] for p in bound]
                 y_values = [p[1] for p in bound]
                 if max(x_values) < self.x < min(x_values):
