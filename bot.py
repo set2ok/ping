@@ -8,7 +8,7 @@ tf.config.run_functions_eagerly(True)
 tf.data.experimental.enable_debug_mode()
 
 class Bot():
-    def __init__(self, player: list, oponents: list, balls,input_shape=(72,), model_path=None, learning_rate = 0.005):
+    def __init__(self, player: list, oponents: list, balls,input_shape=(72,), model_path="model_v3.keras", learning_rate = 0.01):
         # inputs: dt, how_often : 2
         # player:[[x,y], [width, height], [speed], ]: 5
         # 5 * ball:[[x,y], [cos, sin], [speed, radius] distance]: 5 * 7
@@ -20,11 +20,12 @@ class Bot():
         self.oponents = oponents
         self.balls = balls
 
-        self.how_often = 8
+        self.how_often = 20
         self.call_count = 0
         #self.starting_distance = None
         self.past_states = []
-        self.save_lenght = 2000
+        self.save_lenght = 4000
+        self.is_training = False
 
         self.all_states = []
 
@@ -160,15 +161,17 @@ class Bot():
             elif avg_wheight <= min:
                 weights = self.normalize_weights(weights)
 
-            weights = np.clip(weights,1e-10,20)
-            outputs = np.clip(outputs,-0.9,0.9)
+            weights = np.clip(weights,min,max)
+            outputs = np.clip(outputs,-0.98,0.98)
 
 
             if not( len(inputs) == 0 or len(outputs) == 0 ):
-                thread = threading.Thread(target=self.train, args=(inputs, outputs,weights))
-                thread.start()
+                if not self.is_training:
+                    self.is_training = True
+                    thread = threading.Thread(target=self.train, args=(inputs, outputs,weights))
+                    thread.start()
 
-    def train(self, inputs, outputs, wheights,  epochs=6, batch_size=8):
+    def train(self, inputs, outputs, wheights,  epochs=5, batch_size=8):
 
         print("Output stats before training:")
         print("Mean:", np.mean(outputs, axis=0))
@@ -179,6 +182,8 @@ class Bot():
         #train
         self.model_train.fit(inputs, outputs,sample_weight= wheights, epochs=epochs, verbose=2)
         self.model_pred.set_weights(self.model_train.get_weights())
+
+        self.is_training = False
 
     def action(self, input_data, epsilon=0.1):
         if np.random.rand() < epsilon:
@@ -198,6 +203,6 @@ class Bot():
         model.compile(optimizer=optimizer, loss=tf.keras.losses.Huber())
         return model
 
-    def save_model(self, path = "model_v1.keras"):
+    def save_model(self, path = "model_v3.keras"):
         #save module
         self.model_train.save(path)

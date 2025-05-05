@@ -4,6 +4,8 @@ from bot import Bot
 from datetime import datetime
 import random
 import keyboard
+import numpy as np
+import threading
 
 class Train():
     def __init__(self):
@@ -17,59 +19,112 @@ class Train():
 
         self.inner_bound = [(200,200),(300,200),(300,300),(200,300)]
 
+        self.models = []
 
-        self.player = Paddle( 80 ,self.paddle_height,self.inner_bound, 350, type="player")
-        self.padels = [self.player]
+    def creat_bot(self,padels, balls):
+        return Bot(padels[0],padels[1:], balls)
+
+    def creat_padels(self):
+        player = Paddle(80, self.paddle_height, self.inner_bound, 350, type="player")
+        padels = [player]
         for paddle_nr in range(6):
-            self.padels.append(Paddle(100,self.paddle_height,self.outer_bound,450))
-        self.balls = []
-        for balls_nr in range(5):
-            self.balls.append(Ball(self.outer_bound,self.inner_bound,10, self.padels))
-        self.bot = Bot(self.player,self.padels[1:], self.balls)
+            padels.append(Paddle(100, self.paddle_height, self.outer_bound, 450))
 
-    def update_state(self):
-        padels_active = self.padels[:random.randint(2, 6)]
-        balls_active = self.balls[:random.randint(1, 5)]
+        return padels
+
+    def creat_balls(self,padels):
+        balls = []
+        for balls_nr in range(5):
+            balls.append(Ball(self.outer_bound,self.inner_bound,10, padels))
+        return balls
+
+    def update_state(self,padels,balls,bot):
+        padels_active = padels[:random.randint(2, 6)]
+        balls_active = balls[:random.randint(1, 5)]
         for ball in balls_active:
             ball.paddles = padels_active
             ball.spawn()
         for paddle in padels_active:
             paddle.spawn()
-        self.bot.oponents = padels_active
-        self.bot.balls = balls_active
+        bot.oponents = padels_active
+        bot.balls = balls_active
 
         return padels_active, balls_active
-    def main(self):
-
+    def run_simulation(self, thread_id):
         start_time_update = datetime.now()
         start_time_fps = datetime.now()
         count = 0
-        dt = 1/100
+        dt = 1 / 100
+        padles = self.creat_padels()
+        balls = self.creat_balls(padles)
+        bot = self.creat_bot(padles,balls)
 
-        padels_active, balls_active = self.update_state()
+        self.models.append(bot)
+
+        padels_active, balls_active = self.update_state(padles,balls,bot)
+
+        # Träningsloop
         while True:
             count += 1
+            dt *= random.uniform(0.98, 1.02)
+            dt = np.clip(dt, 1 / 150, 1 / 60)
             time = datetime.now()
             if keyboard.is_pressed("s"):
-                print("saved")
-                self.bot.save_model("model_v2.keras")
+                return
 
             if (time - start_time_update).total_seconds() >= 60:
-                padels_active, balls_active = self.update_state()
-
+                print(f"Thread {thread_id}: updating state")
+                padels_active, balls_active = self.update_state(padles,balls,bot)
                 start_time_update = time
 
             dif_time = (time - start_time_fps).total_seconds()
             if dif_time >= 1.0:
-                fps =(count/dif_time)
-                print(fps)
-                dt = 1/fps
+                fps = (count / dif_time)
+                print(f"Thread {thread_id}: FPS {fps}, dt {dt}")
                 count = 0
                 start_time_fps = time
 
+            padles[0].move(random.uniform(-1, 1), dt)
             for ball in balls_active:
-                ball.update(dt, self.bot)
-            self.bot.move(dt)
+                ball.update(dt, bot)
+            bot.move(dt)
+
+            # När simulationen är klar, lagra modellen (eller vikt)
+            if keyboard.is_pressed("m"):
+                self.merge_and_save()
+
+    def average_weights(self, models):
+        """Calculate the average weights from a list of models"""
+        weights = [model.get_weights() for model in models]
+        avg_weights = [np.mean([w[i] for w in weights], axis=0) for i in range(len(weights[0]))]
+        return avg_weights
+
+    def merge_and_save(self):
+        """Merge all models and save the result to a file"""
+        # Antag att du sparar vikterna för alla tränade modeller
+        if len(self.models) == 0:
+            print("No models to merge.")
+            return
+
+        # Medelvärde vikterna från alla modeller
+        avg_weights = self.average_weights(self.models)
+        final_model = self.models[0]
+        final_model.model_train.set_weights(avg_weights)
+
+        # Spara den slutliga modellen
+        final_model.save('model_v4.keras')  # Spara till fil
+        print("Model merged and saved")
+
+    def run_threads(self, num_threads):
+        threads = []
+        self.models = []
+        for i in range(num_threads):
+            thread = threading.Thread(target=self.run_simulation, args=(i,))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
 
 train = Train()
-train.main()
+train.run_threads(5)
