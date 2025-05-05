@@ -193,15 +193,14 @@ class Ball():
                 y_values = [p[1] for p in bound]
                 if max(x_values) < self.x < min(x_values):
                     distances.append(min([abs(min(y_values) - self.y), abs(max(y_values) - self.y)]) - self.radius)
-                elif max(y_values) < self.y < min(y_values):
+                if max(y_values) < self.y < min(y_values):
                     distances.append(min([abs(min(x_values) - self.x), abs(max(x_values) - self.x)]) - self.radius)
-                else:
 
-                    point = np.array([self.x,self.y])
+                point = np.array([self.x,self.y])
 
-                    bounds_points = np.array([bound])
+                bounds_points = np.array([bound])
 
-                    distance =  np.linalg.norm(bounds_points - point, axis=1)
-                    distances.append(np.min(distance) - self.radius)
+                distance =  np.linalg.norm(bounds_points - point, axis=1)
+                distances.append(np.min(distance) - self.radius)
 
         return abs(min(distances))

@@ -8,7 +8,7 @@ tf.config.run_functions_eagerly(True)
 tf.data.experimental.enable_debug_mode()
 
 class Bot():
-    def __init__(self, player: list, oponents: list, balls,input_shape=(72,), model_path="model_v1.keras", learning_rate = 0.005):
+    def __init__(self, player: list, oponents: list, balls,input_shape=(72,), model_path=None, learning_rate = 0.005):
         # inputs: dt, how_often : 2
         # player:[[x,y], [width, height], [speed], ]: 5
         # 5 * ball:[[x,y], [cos, sin], [speed, radius] distance]: 5 * 7
