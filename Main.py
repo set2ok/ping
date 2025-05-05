@@ -25,7 +25,7 @@ class Main:
         for paddle_nr in range(6):
             self.padels.append(Paddle(100,self.paddle_height,self.outer_bound,450))
         self.balls = []
-        for balls_nr in range(5):
+        for balls_nr in range(3):
             self.balls.append(Ball(self.outer_bound,self.inner_bound,10, self.padels))
         self.bot = Bot(self.player,self.padels[1:], self.balls)
     def main(self):

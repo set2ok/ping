@@ -16,8 +16,7 @@ class Paddle():
     def creat_figure(self):
         figure = [] # corners
         side = self.side_on_rectangle()
-        if side == False:
-            side = 0
+
         n_side = (side + 1) % 4 # next side/ point,
 
         a = 1 # reverse actions for other pair of side, ex 0,2 and 1,3 defult 0 and 1
@@ -78,7 +77,7 @@ class Paddle():
             x2, y2 = self.bound[(i + 1) % 4]  # Wrap around to form edges
             if self.is_point_on_line(self.x, self.y, x1, y1, x2, y2):
                 return i
-        return False
+        return 0
 
     # check if a point is on a line segment
     def is_point_on_line(self,x, y, x1, y1, x2, y2):
