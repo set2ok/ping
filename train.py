@@ -67,9 +67,9 @@ class Train():
         while True:
             count += 1
             dt *= random.uniform(0.98, 1.02)
-            dt = np.clip(dt, 1 / 150, 1 / 60)
+            dt = np.clip(dt, 1 / 120, 1 / 60)
             time = datetime.now()
-            if keyboard.is_pressed("s"):
+            if keyboard.is_pressed("§"):
                 return
 
             if (time - start_time_update).total_seconds() >= 60:
@@ -78,7 +78,7 @@ class Train():
                 start_time_update = time
 
             dif_time = (time - start_time_fps).total_seconds()
-            if dif_time >= 1.0:
+            if dif_time >= 10:
                 fps = (count / dif_time)
                 print(f"Thread {thread_id}: FPS {fps}, dt {dt}")
                 count = 0
@@ -95,7 +95,7 @@ class Train():
 
     def average_weights(self, models):
         """Calculate the average weights from a list of models"""
-        weights = [model.get_weights() for model in models]
+        weights = [model.model_train.get_weights() for model in models]
         avg_weights = [np.mean([w[i] for w in weights], axis=0) for i in range(len(weights[0]))]
         return avg_weights
 
@@ -111,8 +111,8 @@ class Train():
         final_model = self.models[0]
         final_model.model_train.set_weights(avg_weights)
 
-        # Spara den slutliga modellen
-        final_model.save('model_v4.keras')  # Spara till fil
+        # Spara den slutliga modellenmm
+        final_model.save_model()  # Spara till fil
         print("Model merged and saved")
 
     def run_threads(self, num_threads):
@@ -126,5 +126,6 @@ class Train():
         for thread in threads:
             thread.join()
 
+
 train = Train()
-train.run_threads(5)
+train.run_threads(2)

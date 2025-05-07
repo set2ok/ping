@@ -1,4 +1,5 @@
 import tensorflow as tf
+from setuptools.dist import sequence
 from tensorflow.keras import layers, regularizers
 import numpy as np
 import math
@@ -8,7 +9,7 @@ tf.config.run_functions_eagerly(True)
 tf.data.experimental.enable_debug_mode()
 
 class Bot():
-    def __init__(self, player: list, oponents: list, balls,input_shape=(72,), model_path="model_v3.keras", learning_rate = 0.01):
+    def __init__(self, player: list, oponents: list, balls,input_shape=(72,), model_path=None, learning_rate = 0.01):
         # inputs: dt, how_often : 2
         # player:[[x,y], [width, height], [speed], ]: 5
         # 5 * ball:[[x,y], [cos, sin], [speed, radius] distance]: 5 * 7
@@ -26,14 +27,16 @@ class Bot():
         self.past_states = []
         self.save_lenght = 4000
         self.is_training = False
+        self.sequence_length = 5
 
-        self.all_states = []
+
 
         self.max_balls = 5
         self.max_oponents = 6
 
         self.input_shape = input_shape
         self.learning_rate = learning_rate
+        self.epsilon = 0.1
 
         self.model_pred = self.build_model(1/6) if model_path is None else self.load_model(model_path)
         self.model_train = self.build_model(1/20) if model_path is None else self.load_model(model_path)
@@ -43,14 +46,13 @@ class Bot():
         optimizer = tf.keras.optimizers.Adam(learning_rate=self.learning_rate, clipnorm=1.5)
 
         model = tf.keras.Sequential([
-            tf.keras.Input(shape=self.input_shape),
-            tf.keras.layers.Dense(512, activation = "relu",  kernel_regularizer= regularizers.l2(0.1)),
+            tf.keras.Input(shape=(self.sequence_length,self.input_shape[0])),
+            tf.keras.layers.LSTM(128, return_sequences=False),
+            tf.keras.layers.Dense(128, activation = "relu",  kernel_regularizer= regularizers.l2(0.01)),
             tf.keras.layers.Dropout(drop_rate/2),  # Prevents overfitting
-            tf.keras.layers.Dense(256, activation='relu', kernel_regularizer= regularizers.l2(0.1)),
+            tf.keras.layers.Dense(64, activation='relu', kernel_regularizer= regularizers.l2(0.01)),
             tf.keras.layers.Dropout(drop_rate),
-            tf.keras.layers.Dense(256, activation='relu', kernel_regularizer= regularizers.l2(0.1)),
-            tf.keras.layers.Dropout(drop_rate),
-            tf.keras.layers.Dense(256, activation='relu', kernel_regularizer=regularizers.l2(0.1)),
+            tf.keras.layers.Dense(64, activation='relu', kernel_regularizer= regularizers.l2(0.01)),
             tf.keras.layers.Dropout(drop_rate),
             tf.keras.layers.Dense(self.max_oponents, activation='tanh')  # Output range (-1 to 1) for movement for every oponent
         ])
@@ -87,12 +89,26 @@ class Bot():
 
         return oponents_list
 
+    def create_input_sequence(self, current_input):
+
+
+        sequence = [state[0][:] for state in self.past_states[-(self.sequence_length - 1):]]
+        sequence.append(current_input)
+
+        if len(sequence) < self.sequence_length: # pad with zeros
+            padding = [np.zeros_like(self.)] * (self.sequence_length - len(sequence))
+            sequence = padding + sequence
+
+
+        return np.array(sequence)
+
     def move(self,dt: float):
         if self.call_count % self.how_often == 0 or self.call_count == 0:
             input_data = self.create_input(dt)
-            input_data = np.expand_dims(input_data, axis=0)
-            actions = self.action(input_data)
-            self.save_states(input_data,actions)
+            sequence = self.create_input_sequence(input_data)
+            sequence = np.expand_dims(sequence, axis=0)
+            actions = self.action(sequence)
+            self.save_states(sequence,actions)
             for oponent, action in zip(self.oponents,actions[0:len(self.oponents)]):
                 oponent.move(float(action),dt)
         else:
@@ -147,11 +163,11 @@ class Bot():
     def normalize_weights(self,weights):
         return weights / np.max(weights)
 
-    def active_training(self, max = 20, min = 1e-10):
+    def active_training(self, max = 20, min = 1e-5):
         if len(self.past_states) >2:
             data = self.past_states[:int(self.save_lenght/2)]
             data.sort(key=lambda x: x[2], reverse=True)
-            data = data[:int(len(data)/3)]
+            data = data[:int(len(data)/4)]
             inputs, outputs, weights = map(np.array, zip(*data))
             inputs = np.squeeze(inputs)
 
@@ -185,12 +201,13 @@ class Bot():
 
         self.is_training = False
 
-    def action(self, input_data, epsilon=0.1):
-        if np.random.rand() < epsilon:
+    def action(self, input_data):
+        self.epsilon = max(0.01, self.epsilon * 0.9999)
+        if np.random.rand() < self.epsilon:
 
             return np.random.uniform(-1.0, 1.0, size=self.max_oponents)
-        else:
 
+        else:
             pred = self.model_pred.predict(input_data, verbose=0)[0]
             confidence = np.std(pred)  # hög std = osäkrare modell
             noise_scale = 0.05 + 0.3 * confidence
@@ -203,6 +220,6 @@ class Bot():
         model.compile(optimizer=optimizer, loss=tf.keras.losses.Huber())
         return model
 
-    def save_model(self, path = "model_v3.keras"):
+    def save_model(self, path = "model_v1.keras"):
         #save module
         self.model_train.save(path)

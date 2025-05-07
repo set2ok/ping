@@ -8,8 +8,9 @@
       <change beforePath="$PROJECT_DIR$/.idea/Retrogame.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Retrogame.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bot.py" beforeDir="false" afterPath="$PROJECT_DIR$/bot.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/model_v1.keras" beforeDir="false" afterPath="$PROJECT_DIR$/model_v1.keras" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/paddle.py" beforeDir="false" afterPath="$PROJECT_DIR$/paddle.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/train.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -158,8 +159,8 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.train (1)" />
-        <item itemvalue="Python.test" />
         <item itemvalue="Python.Main" />
+        <item itemvalue="Python.test" />
         <item itemvalue="Python.train" />
       </list>
     </recent_temporary>

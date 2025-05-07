@@ -16,6 +16,8 @@ class Paddle():
     def creat_figure(self):
         figure = [] # corners
         side = self.side_on_rectangle()
+        if side == False or side == None:
+            side = 0
 
         n_side = (side + 1) % 4 # next side/ point,
 
@@ -53,7 +55,7 @@ class Paddle():
                 figure.append((self.x - a * self.height / 2, self.y + a * self.width))
 
             else: # if curved
-                if abs(self.y - self.bound[n_side][0]) <= self.height/2:
+                if abs(self.y - self.bound[n_side][0]) <= self.height/2: #
                     figure.append((self.x + a * self.height / 2 - a * (self.height / 2 - abs(self.y - self.bound[n_side][1])), self.bound[n_side][1] - a* self.height/2))
                     figure.append((self.x + a * self.height / 2 - a * (self.height / 2 - abs(self.y - self.bound[n_side][1])), self.bound[n_side][1] + a* self.height/2))  # outer corner
 
@@ -92,7 +94,7 @@ class Paddle():
         if side is not False:
             x1, y1 = self.bound[side]
             x2, y2 = self.bound[(side + 1) % 4]
-            # linjeparameter t för projicering
+
             dx, dy = x2 - x1, y2 - y1
             t = max(0, min(1, ((self.x - x1) * dx + (self.y - y1) * dy) / (dx * dx + dy * dy)))
             self.x = x1 + t * dx
