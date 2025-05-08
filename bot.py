@@ -1,5 +1,4 @@
 import tensorflow as tf
-from setuptools.dist import sequence
 from tensorflow.keras import layers, regularizers
 import numpy as np
 import math
@@ -9,6 +8,9 @@ tf.config.run_functions_eagerly(True)
 tf.data.experimental.enable_debug_mode()
 
 class Bot():
+    """
+
+    """
     def __init__(self, player: list, oponents: list, balls,input_shape=(72,), model_path=None, learning_rate = 0.01):
         # inputs: dt, how_often : 2
         # player:[[x,y], [width, height], [speed], ]: 5
@@ -28,6 +30,7 @@ class Bot():
         self.save_lenght = 4000
         self.is_training = False
         self.sequence_length = 5
+        self.sequence_list = [np.zeros(input_shape[0]) for _ in range(self.sequence_length)]
 
 
 
@@ -47,10 +50,10 @@ class Bot():
 
         model = tf.keras.Sequential([
             tf.keras.Input(shape=(self.sequence_length,self.input_shape[0])),
-            tf.keras.layers.LSTM(128, return_sequences=False),
-            tf.keras.layers.Dense(128, activation = "relu",  kernel_regularizer= regularizers.l2(0.01)),
+            tf.keras.layers.LSTM(256, return_sequences=False),
+            tf.keras.layers.Dense(256, activation = "relu",  kernel_regularizer= regularizers.l2(0.01)),
             tf.keras.layers.Dropout(drop_rate/2),  # Prevents overfitting
-            tf.keras.layers.Dense(64, activation='relu', kernel_regularizer= regularizers.l2(0.01)),
+            tf.keras.layers.Dense(128, activation='relu', kernel_regularizer= regularizers.l2(0.01)),
             tf.keras.layers.Dropout(drop_rate),
             tf.keras.layers.Dense(64, activation='relu', kernel_regularizer= regularizers.l2(0.01)),
             tf.keras.layers.Dropout(drop_rate),
@@ -90,17 +93,9 @@ class Bot():
         return oponents_list
 
     def create_input_sequence(self, current_input):
-
-
-        sequence = [state[0][:] for state in self.past_states[-(self.sequence_length - 1):]]
-        sequence.append(current_input)
-
-        if len(sequence) < self.sequence_length: # pad with zeros
-            padding = [np.zeros_like(self.)] * (self.sequence_length - len(sequence))
-            sequence = padding + sequence
-
-
-        return np.array(sequence)
+        self.sequence_list.pop(0)
+        self.sequence_list.append(current_input)
+        return np.array(self.sequence_list)
 
     def move(self,dt: float):
         if self.call_count % self.how_often == 0 or self.call_count == 0:
@@ -114,8 +109,11 @@ class Bot():
         else:
             for oponent, action in zip(self.oponents,self.past_states[-1][1][:len(self.oponents)]):
                 oponent.move(float(action),dt)
-        if self.call_count % (self.save_lenght/2) == 0 and not self.call_count == 0 and not len(self.past_states) <= self.save_lenght/2:
+
+        if (self.call_count % (self.save_lenght/2) == 0 and not self.call_count == 0
+                and not len(self.past_states) <= self.save_lenght/2): #
             self.active_training()
+
         self.call_count += 1
 
     def get_distance_to_balls(self):
@@ -138,11 +136,12 @@ class Bot():
 
             for i in range(start, n):
                 progress = (i - start) / (n - start)
-                scale = 1.0 - progress * 0.9  # 1.0 → 0.1
+                scale = 1.0 - progress * 0.95  # 1.0 → 0.1
                 penalty = scale / (penalty_strength + 1e-5)  # mindre avstånd → svagare straff
                 self.past_states[i][2] *= penalty**(0.5)
 
     def save_states(self,input,output):
+
         distances = self.get_distance_to_balls()
         distance = min(distances)
         if len(self.balls) > 1:
@@ -176,6 +175,9 @@ class Bot():
                 weights = self.normalize_weights(weights) * max
             elif avg_wheight <= min:
                 weights = self.normalize_weights(weights)
+
+            mask = weights < 1e-2
+            weights[mask] = weights[mask] * -1
 
             weights = np.clip(weights,min,max)
             outputs = np.clip(outputs,-0.98,0.98)

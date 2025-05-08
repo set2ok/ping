@@ -13,63 +13,90 @@ class Paddle():
         self.spawn()# creates cordinates
 
     #create the outer corners of the paddle
-    def creat_figure(self):
-        figure = [] # corners
+    def create_figure(self):
         side = self.side_on_rectangle()
-        if side == False or side == None:
+        if type(side) == bool:
+            print(side)
             side = 0
 
         n_side = (side + 1) % 4 # next side/ point,
 
-        a = 1 # reverse actions for other pair of side, ex 0,2 and 1,3 defult 0 and 1
-        if side >1:
-            a = -1
-
         if side == 0 or side == 2: # upp and down
 
-            if self.is_point_on_line(self.x + a*self.width, self.y, self.bound[side][0],self.bound[side][1], self.bound[n_side][0] + a*self.height/2,self.bound[n_side][1]): # check if curve
-                figure.append((self.x, self.y - a * self.height / 2))  # 1 corner
-                figure.append((self.x + a * self.width, self.y - a * self.height / 2))
-                figure.append((self.x + a*self.width, self.y + a*self.height / 2))
-
-            else: # if curved
-                if abs(self.x - self.bound[n_side][0]) <= self.height/2: #smothe transiton
-                    figure.append((self.bound[n_side][0] - a* self.height/2,self.y - a*self.height/2 + a*(self.height/2 - abs(self.x - self.bound[n_side][0])))) # first corner
-                    figure.append((self.bound[n_side][0] + a * self.height / 2, self.y - a*self.height/2 + a*(self.height/2 - abs(self.x - self.bound[n_side][0]))))  # outer corner
-                else:
-                    figure.append((self.x, self.y - a * self.height / 2))  # 1 corner
-                    figure.append((self.bound[n_side][0] + a*self.height/2 , self.y - a*self.height/2)) # outer corner
-                figure.append((self.bound[n_side][0] + a*self.height/2 , self.bound[n_side][1] + a*(self.width - abs(self.bound[n_side][0] - self.x) )))
-                figure.append((self.bound[n_side][0] - a*self.height/2 , self.bound[n_side][1] + a*(self.width- abs(self.bound[n_side][0] - self.x) )))
-                if not abs(self.x - self.bound[n_side][0]) <= self.height / 2:
-                    figure.append((self.bound[n_side][0] - a*self.height/2 , self.bound[n_side][1] + a*self.height/2)) # inner corner
-
-            if not abs(self.x - self.bound[n_side][0]) <= self.height / 2:
-                figure.append((self.x, self.y + a*self.height / 2,)) #last corner
+            return self.figure_x_axies(side,n_side)
 
         elif side == 1 or side == 3: # left and right
 
-            if self.is_point_on_line(self.x, self.y + a*self.width, self.bound[side][0],self.bound[side][1], self.bound[n_side][0],self.bound[n_side][1] + a*self.height/2): # check if curve
+            return self.figure_y_axies(side,n_side)
+
+
+    def figure_y_axies(self,side,n_side):
+        figure = []
+        a = 1
+        if side == 3:
+            a = -1
+        if self.is_point_on_line(self.x, self.y + a * self.width, self.bound[side][0], self.bound[side][1],
+                                 self.bound[n_side][0], self.bound[n_side][1] + a * self.height / 2):  # check if curve
+            figure.append((self.x + a * self.height / 2, self.y))  # 1 corner
+            figure.append((self.x + a * self.height / 2, self.y + a * self.width))
+            figure.append((self.x - a * self.height / 2, self.y + a * self.width))
+
+        else:  # if curved
+            if abs(self.y - self.bound[n_side][0]) <= self.height / 2:  #
+                figure.append((self.x + a * self.height / 2 - a * (
+                            self.height / 2 - abs(self.y - self.bound[n_side][1])),
+                            self.bound[n_side][1] - a * self.height / 2))
+                figure.append((self.x + a * self.height / 2 - a * (
+                            self.height / 2 - abs(self.y - self.bound[n_side][1])),
+                            self.bound[n_side][1] + a * self.height / 2))  # outer corner
+
+            else:
                 figure.append((self.x + a * self.height / 2, self.y))  # 1 corner
-                figure.append((self.x + a * self.height / 2, self.y + a * self.width))
-                figure.append((self.x - a * self.height / 2, self.y + a * self.width))
+                figure.append((self.bound[n_side][0] + a * self.height / 2,
+                               self.bound[n_side][1] + a * self.height / 2))  # outer corner
+            figure.append((self.bound[n_side][0] - a * (self.width - abs(self.bound[n_side][0] - self.y)),
+                           self.bound[n_side][1] + a * self.height / 2))
+            figure.append((self.bound[n_side][0] - a * (self.width - abs(self.bound[n_side][0] - self.y)),
+                           self.bound[n_side][1] - a * self.height / 2))
+            if not abs(self.y - self.bound[n_side][0]) <= self.height / 2:
+                figure.append((self.bound[n_side][0] - a * self.height / 2,
+                               self.bound[n_side][1] - a * self.height / 2))  # inner corner
 
-            else: # if curved
-                if abs(self.y - self.bound[n_side][0]) <= self.height/2: #
-                    figure.append((self.x + a * self.height / 2 - a * (self.height / 2 - abs(self.y - self.bound[n_side][1])), self.bound[n_side][1] - a* self.height/2))
-                    figure.append((self.x + a * self.height / 2 - a * (self.height / 2 - abs(self.y - self.bound[n_side][1])), self.bound[n_side][1] + a* self.height/2))  # outer corner
+        if not abs(self.y - self.bound[n_side][0]) <= self.height / 2:
+            figure.append((self.x - a * self.height / 2, self.y))  # last corner
 
-                else:
-                    figure.append((self.x + a * self.height / 2, self.y))  # 1 corner
-                    figure.append((self.bound[n_side][0] + a*self.height/2 , self.bound[n_side][1] + a*self.height/2)) # outer corner
-                figure.append((self.bound[n_side][0] - a*(self.width - abs(self.bound[n_side][0] - self.y)), self.bound[n_side][1] + a*self.height/2))
-                figure.append((self.bound[n_side][0] - a*(self.width - abs(self.bound[n_side][0] - self.y)) , self.bound[n_side][1] - a*self.height/2))
-                if not abs(self.y - self.bound[n_side][0]) <= self.height / 2:
-                    figure.append((self.bound[n_side][0] - a*self.height/2 , self.bound[n_side][1] - a*self.height/2)) # inner corner
+        return figure
+    def figure_x_axies(self,side,n_side):
+        figure = []
+        a = 1
+        if side == 2:
+            a = -1
+        if self.is_point_on_line(self.x + a * self.width, self.y, self.bound[side][0], self.bound[side][1],
+                                 self.bound[n_side][0] + a * self.height / 2, self.bound[n_side][1]):  # check if curve
+            figure.append((self.x, self.y - a * self.height / 2))  # 1 corner
+            figure.append((self.x + a * self.width, self.y - a * self.height / 2))
+            figure.append((self.x + a * self.width, self.y + a * self.height / 2))
 
-            if not abs(self.y - self.bound[n_side][0]) <= self.height/2:
-                figure.append((self.x - a*self.height / 2, self.y)) # last corner
+        else:  # if curved
+            if abs(self.x - self.bound[n_side][0]) <= self.height / 2:  # smothe transiton
+                figure.append((self.bound[n_side][0] - a * self.height / 2, self.y - a * self.height / 2 + a * (
+                            self.height / 2 - abs(self.x - self.bound[n_side][0]))))  # first corner
+                figure.append((self.bound[n_side][0] + a * self.height / 2, self.y - a * self.height / 2 + a * (
+                            self.height / 2 - abs(self.x - self.bound[n_side][0]))))  # outer corner
+            else:
+                figure.append((self.x, self.y - a * self.height / 2))  # 1 corner
+                figure.append(
+                    (self.bound[n_side][0] + a * self.height / 2, self.y - a * self.height / 2))  # outer corner
+            figure.append((self.bound[n_side][0] + a * self.height / 2,
+                           self.bound[n_side][1] + a * (self.width - abs(self.bound[n_side][0] - self.x))))
+            figure.append((self.bound[n_side][0] - a * self.height / 2,
+                           self.bound[n_side][1] + a * (self.width - abs(self.bound[n_side][0] - self.x))))
+            if not abs(self.x - self.bound[n_side][0]) <= self.height / 2:
+                figure.append((self.bound[n_side][0] - a * self.height / 2,
+                               self.bound[n_side][1] + a * self.height / 2))  # inner corner
 
+        if not abs(self.x - self.bound[n_side][0]) <= self.height / 2:
+            figure.append((self.x, self.y + a * self.height / 2,))  # last corner
         return figure
 
     # find witch side the point is on
@@ -130,7 +157,7 @@ class Paddle():
             else:
                 self.y += dist
         self.clamp_to_edge()
-        self.figure = self.creat_figure()
+        self.figure = self.create_figure()
 
     def spawn(self):
         side = random.randint(0,3)
@@ -143,4 +170,4 @@ class Paddle():
             self.x = self.bound[side][0]
             self.y = random.uniform(min(self.bound[side][1], self.bound[n_side][1]) + self.height,
                                     max(self.bound[side][1], self.bound[n_side][1]) - self.height)
-        self.figure = self.creat_figure()
+        self.figure = self.create_figure()
