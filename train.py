@@ -21,10 +21,10 @@ class Train():
 
         self.models = []
 
-    def creat_bot(self,padels, balls):
+    def create_bot(self,padels, balls):
         return Bot(padels[0],padels[1:], balls)
 
-    def creat_padels(self):
+    def create_padels(self):
         player = Paddle(80, self.paddle_height, self.inner_bound, 350, type="player")
         padels = [player]
         for paddle_nr in range(6):
@@ -32,7 +32,7 @@ class Train():
 
         return padels
 
-    def creat_balls(self,padels):
+    def create_balls(self,padels):
         balls = []
         for balls_nr in range(5):
             balls.append(Ball(self.outer_bound,self.inner_bound,10, padels))
@@ -55,9 +55,9 @@ class Train():
         start_time_fps = datetime.now()
         count = 0
         dt = 1 / 100
-        padles = self.creat_padels()
-        balls = self.creat_balls(padles)
-        bot = self.creat_bot(padles,balls)
+        padles = self.create_padels()
+        balls = self.create_balls(padles)
+        bot = self.create_bot(padles,balls)
 
         self.models.append(bot)
 
@@ -72,10 +72,11 @@ class Train():
             if keyboard.is_pressed("§"):
                 return
 
-            if (time - start_time_update).total_seconds() >= 60:
+            if (time - start_time_update).total_seconds() >= 120:
                 print(f"Thread {thread_id}: updating state")
                 padels_active, balls_active = self.update_state(padles,balls,bot)
                 start_time_update = time
+                self.merge_and_save()
 
             dif_time = (time - start_time_fps).total_seconds()
             if dif_time >= 10:
@@ -128,4 +129,4 @@ class Train():
 
 
 train = Train()
-train.run_threads(2)
+train.run_threads(1)
